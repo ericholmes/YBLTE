@@ -1,6 +1,10 @@
 ## YBLTE 2025-26
-## MiniDOT data processing script
-## Eric Holmes - Kristina Nguyen - Last Edited 1/29/26
+## MiniDOT data processing script, comparing I80 and TER sites
+## Eric Holmes - Kristina Nguyen - Last Edited 2/2/26
+
+# editing notes
+  # conductivity data from EC sensors, rename this file or create new script?
+  # no sight of flow data for TER and I80 (exists or hidden?)
 
 ## Load Libraries ----------------------------------------------------------
 
@@ -10,10 +14,10 @@ library(ggridges)
 ## Load data ---------------------------------------------------------------
 saveOutput = F
 
-##list folders corresponding to DOBO serial numbers
+## List folders corresponding to DOBO serial numbers
 folders <- list.files("Data/tabular/MiniDOTs")
 
-##load miniDOT serial lookup table
+## Load miniDOT serial lookup table
 dobolookup <- read.csv("Data/tabular/YBLTE_miniDOTlookup.csv")
   # miniDOT lookup has the station, serial, and start/end (not used, easier to change in code)
 
@@ -38,15 +42,52 @@ for(folder in folders){
     tempdat$datetime <- as.POSIXct(tempdat$time_sec, origin = "1970-01-01", tz = "")
     attr(tempdat$datetime, "tzone") <- "America/Los_Angeles"
     ##Combine individual data files
-    dobodat <- rbind(dobodat, tempdat[, c("station", "datetime", "temp_c", "do_mgl", "q")])
+    dobodat <- rbind(dobodat, tempdat[, c("station", "datetime", "temp_c", "do_mgl")])
     ##Clean up workspace after each file
     rm(serial, tempdat)
   }
 }
 
+## Create empty data frame to compile all conductivity data, different because time not guaranteed to line up
+conddat <- data.frame()
+
+## Load EC data
+ec <- list.files("Data/tabular/EC_loggers", full.names = T)
+ec <- as.list(ec[grepl(".csv", ec)])
+for(f in ec){
+  
+  cond_temp <- read.csv(f, skip= 1, header = T)
+  cond_temp <- cond_temp[,2:4]
+  colnames(cond_temp) <- c("datetime", "raw_cond", "temp")
+  
+  # get station from file name
+  cond_temp$station <- str_sub(f, -7, -5)
+  
+  # convert time type
+  cond_temp$datetime <- as.POSIXct(cond_temp$datetime, tz="America/Los_Angeles", 
+                                   format="%m/%d/%y %I:%M:%S %p")
+  # cond_temp$datetime <- format(cond_temp$datetime, "%Y-%m-%d %H:%M:%S")
+  
+  # convert temperature from F to C
+  cond_temp$temp <- (cond_temp$temp-32)*5/9
+  
+  # calculate SpC from raw conductivity and temperature
+  cond_temp$spc <- cond_temp$raw_cond/(1+0.02*(cond_temp$temp-25))
+  
+  conddat <- rbind(conddat, cond_temp[,c("station","datetime","spc")])
+  }
+
 ## Clean DOBO data ---------------------------------------------------------
 # Filter to current water year 
 dobodat <- dobodat[dobodat$datetime > as.POSIXct("2025-10-01"),]
+conddat <- conddat[conddat$datetime > as.POSIXct("2025-10-01"),]
+
+# Drop NA
+dobodat <- drop_na(dobodat)
+conddat <- drop_na(conddat)
+
+# Drop bad conductivity values (guessing under 150); edit values further later (better and for other params)
+conddat <- filter(conddat, spc>150)
 
 # Get earliest dates for each station
 # dobodat %>% group_by(station)%>% summarize(mindate = min(datetime)))
@@ -57,17 +98,27 @@ dobodat <- dobodat[dobodat$datetime > as.POSIXct("2025-10-01"),]
 
 # Convert date type
 dobodat$date <- as.Date(dobodat$datetime)
+conddat$date <- as.Date(conddat$datetime)
 
 # Get daily min, max, mean per variable
 dobodaily <- dobodat %>% filter(temp_c < 30) %>% group_by(station, date) %>% 
   summarize(mintemp = min(temp_c), meantemp = mean(temp_c), maxtemp = max(temp_c),
-            mindo = min(do_mgl), meando = mean(do_mgl), maxdo = max(do_mgl),
-            minq = min(q), meanq = mean(q), maxq = max(q)) %>% data.frame()
+            mindo = min(do_mgl), meando = mean(do_mgl), maxdo = max(do_mgl)) %>% data.frame()
+conddaily <- conddat %>% 
+  group_by(station, date) %>% 
+  summarize(minc = min(spc), meanc = mean(spc), maxc = max(spc)) %>% data.frame()
 
 # Reshape data frame for daily points
 dbmelt <- reshape2::melt(dobodaily, id.vars = c("station", "date"))
+cdmelt <- reshape2::melt(conddaily, id.vars = c("station", "date"))
 
-## Plot DOBO data ----------------------------------------------------------
+# Station factors for plotting
+dbmelt$stationfac <- factor(dbmelt$station, 
+                            levels = c("TER", "I80"))
+cdmelt$stationfac <- factor(cdmelt$station,
+                            levels = c("TER", "I80"))
+
+## Plot DOBO+cond data ----------------------------------------------------------
 
 ### Temperature ----
 ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line(aes(color = station)) + theme_bw()
@@ -78,15 +129,10 @@ ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line() + theme_bw() +
 ggplot(dobodaily, aes(x = maxtemp, fill = station)) + geom_density(alpha = .2) + 
   facet_wrap(station ~ .) + theme_bw()
 
-dbmelt$stationfac <- factor(dbmelt$station, 
-                            levels = c("RVB", "DWSN",  "DWSS", "LIB", "BL5", "SHAS", "SHAN", "SSE"))
-
 ggplot(dbmelt[dbmelt$variable %in% c("mintemp", "meantemp", "maxtemp"),], 
        aes(x = value, y = stationfac, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) + 
   scale_fill_viridis_c(option = "B", direction = -1) +
   facet_grid(. ~ variable, scales = "free") + theme_bw()
-
-#### temp range ----
 
 ### DO ----
 
@@ -95,20 +141,26 @@ ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line(aes(color = station))
 ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line() + theme_bw() + 
   facet_wrap(station~.)
 
+ggplot(dobodaily, aes(x = maxdo, fill = station)) + geom_density(alpha = .2) + 
+  facet_wrap(station ~ .) + theme_bw()
+
 ggplot(dbmelt[dbmelt$variable %in% c("mindo", "meando", "maxdo"),], 
        aes(x = value, y = stationfac, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) + 
   scale_fill_viridis_c(option = "B", direction = 1) +
   facet_grid(. ~ variable, scales = "fixed") + theme_bw()
 
-### q ----
+### Conductivity ----
 
-ggplot(dobodat, aes(x = datetime, y = q)) + geom_line(aes(color = station)) + theme_bw()
+ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line(aes(color = station)) + theme_bw()
 
-ggplot(dobodat, aes(x = datetime, y = q)) + geom_line() + theme_bw() + 
+ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line() + theme_bw() +
   facet_wrap(station~.)
 
-ggplot(dbmelt[dbmelt$variable %in% c("minq", "meanq", "maxq"),], 
-       aes(x = value, y = stationfac, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) + 
+ggplot(conddaily, aes(x = maxc, fill = station)) + geom_density(alpha = .2) + 
+  facet_wrap(station ~ .) + theme_bw()
+
+ggplot(cdmelt[cdmelt$variable %in% c("minc", "meanc", "maxc"),],
+       aes(x = value, y = stationfac, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) +
   scale_fill_viridis_c(option = "B", direction = 1) +
   facet_grid(. ~ variable, scales = "fixed") + theme_bw()
 
@@ -116,16 +168,26 @@ ggplot(dbmelt[dbmelt$variable %in% c("minq", "meanq", "maxq"),],
 
 # Convert date type
 dobodaily$datetime <- as.POSIXct(dobodaily$date)
+conddaily$datetime <- as.POSIXct(conddaily$date)
 
 # Create empty categories to be filled with smoothed daily
-dobodat$mindomod <- NA; dobodat$maxdomod <- NA; dobodat$meandomod <- NA
 dobodat$mintempmod <- NA; dobodat$maxtempmod <- NA; dobodat$meantempmod <- NA
-dobodat$minqmod <- NA; dobodat$maxqmod <- NA; dobodat$meanqmod <- NA
+conddat$mincmod <- NA; conddat$maxcmod <- NA; conddat$meancmod <- NA
+dobodat$mindomod <- NA; dobodat$maxdomod <- NA; dobodat$meandomod <- NA
 spanwidth = .2
 # Calculate LOESS smoothed min, max and mean from daily dobodata for each site and year combo
 for(i in unique(dobodaily$station)){
   
   print(i)
+  # Temperature
+  
+  mintempmod <- loess(mintemp ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
+  maxtempmod <- loess(maxtemp ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
+  meantempmod <- loess(meantemp ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
+  
+  dobodat$mintempmod <- ifelse(dobodat$station == i, predict(mintempmod, dobodat$datetime), dobodat$mintempmod)
+  dobodat$maxtempmod <- ifelse(dobodat$station == i, predict(maxtempmod, dobodat$datetime), dobodat$maxtempmod)
+  dobodat$meantempmod <- ifelse(dobodat$station == i, predict(meantempmod, dobodat$datetime), dobodat$meantempmod)
   
   # DO
   
@@ -137,52 +199,37 @@ for(i in unique(dobodaily$station)){
   dobodat$maxdomod <- ifelse(dobodat$station == i, predict(maxdomod, dobodat$datetime), dobodat$maxdomod)
   dobodat$meandomod <- ifelse(dobodat$station == i, predict(meandomod, dobodat$datetime), dobodat$meandomod)
   
-  # Temperature
+  # Clear workspace
   
-  mintempmod <- loess(mintemp ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
-  maxtempmod <- loess(maxtemp ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
-  meantempmod <- loess(meantemp ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
+  rm(mintempmod, maxtempmod, meantempmod,
+     mindomod, maxdomod, meandomod)
+}
+
+for(i in unique(conddaily$station)){
   
-  dobodat$mintempmod <- ifelse(dobodat$station == i, predict(mintempmod, dobodat$datetime), dobodat$mintempmod)
-  dobodat$maxtempmod <- ifelse(dobodat$station == i, predict(maxtempmod, dobodat$datetime), dobodat$maxtempmod)
-  dobodat$meantempmod <- ifelse(dobodat$station == i, predict(meantempmod, dobodat$datetime), dobodat$meantempmod)
+  print(i)
   
-  # Q
+  # Conductivity
   
-  minqmod <- loess(minq ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
-  maxqmod <- loess(maxq ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
-  meanqmod <- loess(meanq ~ as.numeric(datetime), dobodaily[dobodaily$station %in% i, ], span = spanwidth)
-  
-  dobodat$minqmod <- ifelse(dobodat$station == i, predict(minqmod, dobodat$datetime), dobodat$minqmod)
-  dobodat$maxqmod <- ifelse(dobodat$station == i, predict(maxqmod, dobodat$datetime), dobodat$maxqmod)
-  dobodat$meanqmod <- ifelse(dobodat$station == i, predict(meanqmod, dobodat$datetime), dobodat$meanqmod)
+  mincmod <- loess(minc ~ as.numeric(datetime), conddaily[conddaily$station %in% i, ], span = spanwidth)
+  maxcmod <- loess(maxc ~ as.numeric(datetime), conddaily[conddaily$station %in% i, ], span = spanwidth)
+  meancmod <- loess(meanc ~ as.numeric(datetime), conddaily[conddaily$station %in% i, ], span = spanwidth)
+
+  conddat$mincmod <- ifelse(conddat$station == i, predict(mincmod, conddat$datetime), conddat$mincmod)
+  conddat$maxcmod <- ifelse(conddat$station == i, predict(maxcmod, conddat$datetime), conddat$maxcmod)
+  conddat$meancmod <- ifelse(conddat$station == i, predict(meancmod, conddat$datetime), conddat$meancmod)
   
   # Clear workspace
   
-  rm(mindomod, maxdomod, meandomod,
-     mintempmod, maxtempmod, meantempmod,
-     minqmod, maxqmod, meanqmod)
+  rm(mincmod, maxcmod, meancmod)
 }
 
-
-
-# Continuous temp, DO, and q plotting
-
-(domglpan <- ggplot(dobodat, aes(x = datetime, y = meandomod, fill = station, group = station)) +
-    # scale_fill_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
-    # scale_color_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
-    geom_ribbon(aes(ymin = mindomod, ymax = maxdomod), alpha = .2,linetype = 0) + 
-    geom_line(data = dobodat, aes(x = datetime, y = do_mgl, color = station), alpha = .4) + 
-    geom_line(color = "black", linetype = 2) +
-    theme_bw() +
-    labs(x = NULL, y = "Dissolved oxygen (mg/L)")
-    # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
-  )
+# Continuous temp, conductivity, and DO plotting
 
 (tempcpan <- ggplot(dobodat, aes(x = datetime, y = meantempmod, fill = station, group = station)) +
     # scale_fill_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
     # scale_color_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
-    geom_ribbon(aes(ymin = mintempmod, ymax = maxtempmod), alpha = .2,linetype = 0) + 
+    geom_ribbon(aes(ymin = mintempmod, ymax = maxtempmod), alpha = .2, linetype = 0) + 
     geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station), alpha = .4) + 
     geom_line(color = "black", linetype = 2) +
     theme_bw() +
@@ -190,22 +237,36 @@ for(i in unique(dobodaily$station)){
     # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
   )
 
-(qpan <- ggplot(dobodat, aes(x = datetime, y = meanqmod, fill = station, group = station)) +
+(domglpan <- ggplot(dobodat, aes(x = datetime, y = meandomod, fill = station, group = station)) +
     # scale_fill_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
     # scale_color_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
-    geom_ribbon(aes(ymin = minqmod, ymax = maxqmod), alpha = .2,linetype = 0) + 
-    geom_line(data = dobodat, aes(x = datetime, y = q, color = station), alpha = .4) + 
+    geom_ribbon(aes(ymin = mindomod, ymax = maxdomod), alpha = .2, linetype = 0) + 
+    geom_line(data = dobodat, aes(x = datetime, y = do_mgl, color = station), alpha = .4) + 
     geom_line(color = "black", linetype = 2) +
     theme_bw() +
-    labs(x = NULL, y = "Q")
-    # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
-  )
+    labs(x = NULL, y = "Dissolved Oxygen (mg/L)")
+  # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
+)
+
+# Edit with conductivity data; min etc c mods are NA
+(cpan <- ggplot(conddat, aes(x = datetime, y = meancmod, fill = station, group = station)) +
+    # scale_fill_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
+    # scale_color_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
+    geom_ribbon(aes(ymin = mincmod, ymax = maxcmod), alpha = .2, linetype = 0) +
+    geom_line(data = conddat, aes(x = datetime, y = spc, color = station), alpha = .4) +
+    geom_line(color = "black", linetype = 2) +
+    theme_bw() +
+    labs(x = NULL, y = "Specific Conductivity (μS/cm)")
+  # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
+)
 
 # Combine plots and save
 if(saveOutput == T){png(paste("Output/Figures/YBLTE_mindots_01.png", sep = ""), 
-                        height = 5, width = 8, unit = "in", res = 1000)}
+                        height = 8, width = 8, unit = "in", res = 1000)}
+# if(saveOutput == T){png(paste("Output/Figures/YBLTE_mindots_facet_01.png", sep = ""), 
+#                         height = 8, width = 10, unit = "in", res = 1000)}
 
-cowplot::plot_grid(domglpan, tempcpan, qpan, ncol=1)
+cowplot::plot_grid(domglpan, tempcpan, cpan, ncol=1)
 
 if(saveOutput == T){dev.off()}
 # Calculate metrics centered around sampling events -----------------------
