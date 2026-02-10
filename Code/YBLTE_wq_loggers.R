@@ -1,9 +1,8 @@
 ## YBLTE 2025-26
-## MiniDOT data processing script, comparing I80 and TER sites
-## Eric Holmes - Kristina Nguyen - Last Edited 2/2/26
+## Water quality logger data processing script
+## Eric Holmes - Kristina Nguyen - Last Edited 2/10/26
 
 # editing notes
-  # conductivity data from EC sensors, rename this file or create new script?
   # no sight of flow data for TER and I80 (exists or hidden?)
     # flow data --> discharge and stage lvl (cdec I80(no discharge sensor), none for TER (use TOE or LIS?))
 
@@ -115,9 +114,9 @@ cdmelt <- reshape2::melt(conddaily, id.vars = c("station", "date"))
 
 # Station factors for plotting
 dbmelt$stationfac <- factor(dbmelt$station, 
-                            levels = c("TER", "I80"))
+                            levels = c("TER", "SB4", "I80"))
 cdmelt$stationfac <- factor(cdmelt$station,
-                            levels = c("TER", "I80"))
+                            levels = c("TER", "SB4", "I80"))
 
 ## Plot DOBO+cond data ----------------------------------------------------------
 
