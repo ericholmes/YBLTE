@@ -5,6 +5,7 @@
 # editing notes
   # conductivity data from EC sensors, rename this file or create new script?
   # no sight of flow data for TER and I80 (exists or hidden?)
+    # flow data --> discharge and stage lvl (cdec I80(no discharge sensor), none for TER (use TOE or LIS?))
 
 ## Load Libraries ----------------------------------------------------------
 
