@@ -116,7 +116,7 @@ cdmelt <- reshape2::melt(conddaily, id.vars = c("station", "date"))
 dbmelt$stationfac <- factor(dbmelt$station, 
                             levels = c("TER", "SB4", "I80"))
 cdmelt$stationfac <- factor(cdmelt$station,
-                            levels = c("TER", "SB4", "I80"))
+                            levels = c("TEW", "TER", "SB4", "I80"))
 
 ## Plot DOBO+cond data ----------------------------------------------------------
 

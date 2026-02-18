@@ -10,11 +10,16 @@ source("Code/YBLTE_useful_functions.R")
 
 wqp <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
 
-wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1", "RD22", "I80", "AL0", 
-                                           "AL1", "LIS", "STTD", "TEW", "TER",
-                                           "KNG3", "KLWW"))
+wqp <- filter(wqp, Sample_Type=="zoop")
 
-wqp$week <- as.integer(format(wqp$Date, format = "%W")) - 43
+# edit so levels are in order?; add sites? (like SB4, YBLR4..., check in)
+# for plotting, not listed sites were dropped (sitefac is NA)
+wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1", "RD22", "I80", 
+                                            "AL0","AL1", "LIS", "STTD", "TEW",
+                                            "TER","KNG3", "KLWW"))
+
+wqp$week <- as.integer(format(wqp$Date, format = "%W"))
+wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
 wqp$weekchr <- as.character(wqp$week)
 
 wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
@@ -26,6 +31,7 @@ wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
 
 cdec_stations <- c("YBT", "YBY", "LIS", "RCS", "FWD", "PTC", "KNL", "I80")
 
+# sensor is param name, sensor_num is for access
 sensor_codes <- data.frame(sensor = c("chla", "ec", "discharge_cfs", "fdom", 
                                       "wtemp_f", "domgl","ph", "turb_fnu",
                                       "stage_ft"), 
@@ -66,49 +72,70 @@ cdec_wide$spc <- cdec_wide$ec / (1 + 0.02 * (cdec_wide$wtemp_c - 25))
 dput(unique(wqp$Site))
 
 ###Spot measurements
+# heat map to see change over time and site variation
+# boxplots for more specific range/differences between sites
 
-(tempplot <- ggplot(wqp, aes(x = Sitefac, y = Temp, color = weekchr)) + 
-  geom_point(stat = "identity") + labs(x = NULL, color = "Week") +
-  theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_color_viridis_d(option = "C", begin = .2, end = .8))
+(tempplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Temp)) + 
+  geom_raster() + labs(x = "Week", y=NULL, fill = "Temp (C)") +
+  theme_bw() + scale_fill_viridis_c(option = "C"))
+(tempbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Temp)) + 
+    geom_boxplot() + labs(x = NULL, y = "Temp (C)") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
-(doplot <- ggplot(wqp, aes(x = Sitefac, y = DO_mgl, color = weekchr)) + 
-  geom_point(stat = "identity") + labs(x = NULL, color = "Week") +
-  theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_color_viridis_d(option = "C", begin = .2, end = .8))
+(doplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = DO_mgl)) + 
+    geom_raster() + labs(x = "Week", y=NULL, fill = "DO (mgl)") +
+    theme_bw() + scale_fill_viridis_c(option = "C"))
+(dobox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = DO_mgl)) + 
+    geom_boxplot() + labs(x = NULL, y = "DO (mgl)") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
-(spcplot <- ggplot(wqp, aes(x = Sitefac, y = SPC_uscm, color = weekchr)) + 
-  geom_point(stat = "identity") + labs(x = NULL, color = "Week") +
-  theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_color_viridis_d(option = "C", begin = .2, end = .8))
+(spcplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = SPC_uscm)) + 
+    geom_raster() + labs(x = "Week", y=NULL, fill = "SPC (uscm)") +
+    theme_bw() + scale_fill_viridis_c(option = "C"))
+(spcbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = SPC_uscm)) + 
+    geom_boxplot() + labs(x = NULL, y = "SPC (uscm)") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
-(turbplot <- ggplot(wqp, aes(x = Sitefac, y = Turb_fnu, color = weekchr)) + 
-  geom_point(stat = "identity") + labs(x = NULL, color = "Week") +
-  theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_color_viridis_d(option = "C", begin = .2, end = .8))
+(turbplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Turb_fnu)) + 
+    geom_raster() + labs(x = "Week", y=NULL, fill = "Turb (FNU)") +
+    theme_bw() + scale_fill_viridis_c(option = "C"))
+(turbbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Turb_fnu)) + 
+    geom_boxplot() + labs(x = NULL, y = "Turb (FNU)") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
-(chlplot <- ggplot(wqp, aes(x = Sitefac, y = CHL_ugl, color = weekchr)) + 
-  geom_point(stat = "identity") + labs(x = NULL, color = "Week") +
-  theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                     legend.position = "bottom") + 
-  scale_color_viridis_d(option = "C", begin = .2, end = .8))
+(chlplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = CHL_ugl)) + 
+    geom_raster() + labs(x = "Week", y=NULL, fill = "Chl (ugl)") +
+    theme_bw() + scale_fill_viridis_c(option = "C"))
+(chlbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = CHL_ugl)) + 
+    geom_boxplot() + labs(x = NULL, y = "Chl (ugl)") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
-(fdomplot <- ggplot(wqp, aes(x = Sitefac, y = fdom_qsu, color = weekchr)) + 
-    geom_point(stat = "identity") + labs(x = NULL, color = "Week") +
-    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-    scale_color_viridis_d(option = "C", begin = .2, end = .8))
+(fdomplot <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = week, y = Sitefac, fill = fdom_qsu)) + 
+    geom_raster() + labs(x = "Week", y=NULL, fill = "FDOM (qsu)") +
+    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    theme_bw() + scale_fill_viridis_c(option = "C"))
+(fdombox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = fdom_qsu)) + 
+    geom_boxplot() + labs(x = NULL, y = "FDOM (qsu)") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 png("Output/Figures/YBLTE_Point_wq_%02d.png",
-    height = 7, width = 6, units = "in", res = 1000, family = "serif")
+    height = 6, width = 7, units = "in", res = 1000, family = "serif")
 
-cowplot::plot_grid(cowplot::plot_grid(tempplot + theme(legend.position = "none"),
-                   doplot+ theme(legend.position = "none"),
-                   spcplot+ theme(legend.position = "none"),
-                   turbplot+ theme(legend.position = "none"),
-                   chlplot+ theme(legend.position = "none"),
-                   fdomplot+ theme(legend.position = "none"),nrow = 3),
-                   cowplot::get_plot_component(chlplot, 'guide-box-bottom', return_all = TRUE),
-                   nrow = 2, rel_heights = c(9,1))
+# cowplot::plot_grid(cowplot::plot_grid(tempplot + theme(legend.position = "none"),
+#                    doplot+ theme(legend.position = "none"),
+#                    spcplot+ theme(legend.position = "none"),
+#                    turbplot+ theme(legend.position = "none"),
+#                    chlplot+ theme(legend.position = "none"),
+#                    fdomplot+ theme(legend.position = "none"),nrow = 3),
+#                    cowplot::get_plot_component(chlplot, 'guide-box-bottom', return_all = TRUE),
+#                    nrow = 2, rel_heights = c(9,1))
+
+# hold on
+cowplot::plot_grid(cowplot::plot_grid(tempplot,doplot,spcplot,turbplot,chlplot,fdomplot,
+                                      nrow = 3))
+
+cowplot::plot_grid(cowplot::plot_grid(tempbox,dobox,spcbox,turbbox,chlbox,fdombox,
+                                      nrow = 3))
 
 dev.off()
 
@@ -210,14 +237,15 @@ cowplot::plot_grid(tulepondplot,
                    align  = "v",
                    nrow = 6)
 
-cowplot::plot_grid(tulepondplot,
-                   contflowplot2,
-                   conttempplot,
-                   contdoplot,
-                   contspcplot,
+cowplot::plot_grid(stageplot + theme(axis.text.x = element_blank()),
+                   contflowplot2 + theme(axis.text.x = element_blank()),
+                   conttempplot + theme(axis.text.x = element_blank()),
+                   contdoplot + theme(axis.text.x = element_blank()),
+                   contspcplot + theme(axis.text.x = element_blank()),
+                   contfdomplot + theme(axis.text.x = element_blank()),
                    contchlplot,
                    align  = "v",
-                   nrow = 6)
+                   nrow = 7)
 
 cowplot::plot_grid(stageplot + theme(axis.text.x = element_blank()),
                    contflowplot2 + theme(axis.text.x = element_blank()),
