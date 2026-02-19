@@ -19,7 +19,7 @@ wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1", "RD22", "I80",
                                             "TER","KNG3", "KLWW"))
 
 wqp$week <- as.integer(format(wqp$Date, format = "%W"))
-wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
+wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9) # week 1 starts water year
 wqp$weekchr <- as.character(wqp$week)
 
 wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
@@ -130,21 +130,21 @@ png("Output/Figures/YBLTE_Point_wq_%02d.png",
 #                    cowplot::get_plot_component(chlplot, 'guide-box-bottom', return_all = TRUE),
 #                    nrow = 2, rel_heights = c(9,1))
 
-# hold on
+# combine heat maps
 cowplot::plot_grid(cowplot::plot_grid(tempplot,doplot,spcplot,turbplot,chlplot,fdomplot,
                                       nrow = 3))
-
+# combine box plots
 cowplot::plot_grid(cowplot::plot_grid(tempbox,dobox,spcbox,turbbox,chlbox,fdombox,
                                       nrow = 3))
 
 dev.off()
 
 #dput(RColorBrewer::brewer.pal(9, "Set1"))
-c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999") 
+c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999")
 
 ###Continuous gauge data
 
-contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "Set1")[1], 
+contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "Set1")[1],
                                           "RCS" = RColorBrewer::brewer.pal(8, "Set1")[5], 
                                           "PTC" = RColorBrewer::brewer.pal(8, "Set1")[2], 
                                           "YBY" = RColorBrewer::brewer.pal(8, "Set1")[4],
@@ -158,6 +158,7 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm, color = Site)))
 
+# wpq matches better with raw cdec EC instead of conversion to SPC (maybe alr in SPC)
 ggplot(cdec_wide[is.na(cdec_wide$spc) == F,], aes(x = Datetime, y = spc, color = Site_no)) + 
   geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = 1) + 
   theme_bw() + labs(title = "Specific Conductivity", y = "SPC (US/cm)", x = NULL)+  contpal +
