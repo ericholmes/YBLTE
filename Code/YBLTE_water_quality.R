@@ -11,13 +11,16 @@ source("Code/YBLTE_useful_functions.R")
 wqp <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
 
 wqp <- filter(wqp, Sample_Type=="zoop")
-
+dput(unique(wqp$Site))
 # edit so levels are in order?; add sites? (like SB4, YBLR4..., check in)
 # for plotting, not listed sites were dropped (sitefac is NA)
-wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1", "RD22", "I80", 
-                                            "AL0","AL1", "LIS", "STTD", "TEW",
-                                            "TER","KNG3", "KLWW"))
+wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1", 
+                                           "KLWW","KNG3", "CCSYB",
+                                           "CNW","RD22", 
+                                           "YBLR4", "SB4", #"I80", 
+                                           "AL0","LIS", "STTD", "TEW","TER"))
 
+unique(wqp$Sitefac)
 wqp$week <- as.integer(format(wqp$Date, format = "%W"))
 wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
 wqp$weekchr <- as.character(wqp$week)
@@ -77,35 +80,36 @@ dput(unique(wqp$Site))
 
 (tempplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Temp)) + 
   geom_raster() + labs(x = "Week", y=NULL, fill = "Temp (C)") +
-  theme_bw() + scale_fill_viridis_c(option = "C"))
+  theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
+
 (tempbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Temp)) + 
     geom_boxplot() + labs(x = NULL, y = "Temp (C)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 (doplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = DO_mgl)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "DO (mgl)") +
-    theme_bw() + scale_fill_viridis_c(option = "C"))
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (dobox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = DO_mgl)) + 
     geom_boxplot() + labs(x = NULL, y = "DO (mgl)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 (spcplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = SPC_uscm)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "SPC (uscm)") +
-    theme_bw() + scale_fill_viridis_c(option = "C"))
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (spcbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = SPC_uscm)) + 
     geom_boxplot() + labs(x = NULL, y = "SPC (uscm)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 (turbplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Turb_fnu)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Turb (FNU)") +
-    theme_bw() + scale_fill_viridis_c(option = "C"))
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (turbbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Turb_fnu)) + 
     geom_boxplot() + labs(x = NULL, y = "Turb (FNU)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 (chlplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = CHL_ugl)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Chl (ugl)") +
-    theme_bw() + scale_fill_viridis_c(option = "C"))
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (chlbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = CHL_ugl)) + 
     geom_boxplot() + labs(x = NULL, y = "Chl (ugl)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
@@ -113,7 +117,7 @@ dput(unique(wqp$Site))
 (fdomplot <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = week, y = Sitefac, fill = fdom_qsu)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "FDOM (qsu)") +
     scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
-    theme_bw() + scale_fill_viridis_c(option = "C"))
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (fdombox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = fdom_qsu)) + 
     geom_boxplot() + labs(x = NULL, y = "FDOM (qsu)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
