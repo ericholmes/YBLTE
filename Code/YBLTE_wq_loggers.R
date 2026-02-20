@@ -117,6 +117,9 @@ dbmelt$stationfac <- factor(dbmelt$station,
                             levels = c("TER", "SB4", "I80"))
 cdmelt$stationfac <- factor(cdmelt$station,
                             levels = c("TEW", "TER", "SB4", "I80"))
+# save data for transfer
+# save(dobodat, file="minidot.Rdata")
+# save(conddat, file="eclog.Rdata")
 
 ## Plot DOBO+cond data ----------------------------------------------------------
 
