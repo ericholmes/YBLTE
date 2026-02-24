@@ -84,6 +84,7 @@ dput(unique(wqp$Site))
 
 (tempplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Temp)) + 
   geom_raster() + labs(x = "Week", y=NULL, fill = "Temp (C)") +
+    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
   theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 
 (tempbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Temp)) + 
@@ -92,6 +93,7 @@ dput(unique(wqp$Site))
 
 (doplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = DO_mgl)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "DO (mgl)") +
+    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (dobox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = DO_mgl)) + 
     geom_boxplot() + labs(x = NULL, y = "DO (mgl)") +
@@ -99,6 +101,7 @@ dput(unique(wqp$Site))
 
 (spcplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = SPC_uscm)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "SPC (uscm)") +
+    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (spcbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = SPC_uscm)) + 
     geom_boxplot() + labs(x = NULL, y = "SPC (uscm)") +
@@ -106,6 +109,7 @@ dput(unique(wqp$Site))
 
 (turbplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Turb_fnu)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Turb (FNU)") +
+    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (turbbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Turb_fnu)) + 
     geom_boxplot() + labs(x = NULL, y = "Turb (FNU)") +
@@ -113,6 +117,7 @@ dput(unique(wqp$Site))
 
 (chlplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = CHL_ugl)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Chl (ugl)") +
+    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (chlbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = CHL_ugl)) + 
     geom_boxplot() + labs(x = NULL, y = "Chl (ugl)") +
@@ -124,6 +129,14 @@ dput(unique(wqp$Site))
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (fdombox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = fdom_qsu)) + 
     geom_boxplot() + labs(x = NULL, y = "FDOM (qsu)") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+
+(zoopplot <- ggplot(wqp %>% drop_na(c(Sitefac, Zoop_score)), aes(x = week, y = Sitefac, fill = Zoop_score)) + 
+    geom_raster() + labs(x = "Week", y=NULL, fill = "Zoop score") +
+    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
+(zoopbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Zoop_score)) + 
+    geom_boxplot() + labs(x = NULL, y = "Zoop score") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 png("Output/Figures/YBLTE_Point_wq_%02d.png",
@@ -139,12 +152,11 @@ png("Output/Figures/YBLTE_Point_wq_%02d.png",
 #                    nrow = 2, rel_heights = c(9,1))
 
 # merge heat maps
-cowplot::plot_grid(cowplot::plot_grid(tempplot,doplot,spcplot,turbplot,chlplot,fdomplot,
-                                      nrow = 3))
+cowplot::plot_grid(cowplot::plot_grid(zoopplot,doplot,spcplot,turbplot,chlplot,fdomplot,
+                                      align  = "v", nrow = 3))
 # merge box plots
-cowplot::plot_grid(cowplot::plot_grid(tempbox,dobox,spcbox,turbbox,chlbox,fdombox,
-                                      nrow = 3))
-
+cowplot::plot_grid(cowplot::plot_grid(zoopbox,dobox,spcbox,turbbox,chlbox,fdombox,
+                                      align  = "v", nrow = 3))
 dev.off()
 
 # new plots, looking at zoop score (not sure if you want but I was curious) ---
