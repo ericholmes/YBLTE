@@ -284,23 +284,28 @@ cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v")
 if(saveplots == T){dev.off()}
 
 #2026
+cdec_wide2026 <- cdec_wide[cdec_wide$Datetime > as.POSIXct("2025-10-01") &  
+                               cdec_wide$Datetime < as.POSIXct("2026-05-01"),]
 
-(ybyplot <- ggplot(cdec_wide[cdec_wide$Site_no == "YBY" & cdec_wide$year %in% 2026,], 
-                   aes(x = Datetime, y = discharge_cfs)) + geom_line() + theme_bw() +
-    xlim(as.POSIXct("2026-01-01"), as.POSIXct("2026-07-01")))
+(ybyplot <- ggplot(cdec_wide2026[cdec_wide2026$Site_no %in% c("CCY", "RCS", "FRE", "PTC"),], 
+                   aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+    geom_line() + theme_bw() + 
+    scale_color_brewer(palette = "Set1") +
+    xlim(as.POSIXct("2025-10-01"), as.POSIXct("2026-05-01")))
 
-(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year == 2026,], 
+(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year %in% 2025:2026,], 
                        aes(x = Date, y = percflow, fill = Site_no)) + 
+    scale_fill_brewer(palette = "Set1") +
     geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
-    xlim(as.Date("2026-01-01"), as.Date("2026-07-01")))
+    xlim(as.Date("2025-10-01"), as.Date("2026-05-01")))
 
 (chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
     geom_line(color = "forestgreen") + theme_bw() +
-    xlim(as.Date("2026-01-01"), as.Date("2026-07-01")))
+    xlim(as.Date("2025-10-01"), as.Date("2026-05-01")))
 
 (ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
     geom_line(color = "orange") + theme_bw() +
-    xlim(as.Date("2026-01-01"), as.Date("2026-07-01")))
+    xlim(as.Date("2025-10-01"), as.Date("2026-05-01")))
 
 if(saveplots == T){png("Output/Figures/YBLTE_Cont_flow2026_%02d.png",
                        height = 10, width = 6, units = "in", res = 1000, family = "serif")}
