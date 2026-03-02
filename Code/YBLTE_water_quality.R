@@ -1,8 +1,4 @@
 # Yolo LTE hydrology and water quality conditions
-  # potential edit notes
-    # incorporate logger data, compare w cdec
-    # do more definitive statistics? correlation plots?
-
 ## Load libraries ----
 library(tidyverse)
 
@@ -159,16 +155,6 @@ cowplot::plot_grid(cowplot::plot_grid(zoopbox,dobox,spcbox,turbbox,chlbox,fdombo
                                       align  = "v", nrow = 3))
 dev.off()
 
-# new plots, looking at zoop score (not sure if you want but I was curious) ---
-(ggplot(wqp %>% drop_na(c(Sitefac, Zoop_score)), aes(x = week, y = Sitefac, fill = Zoop_score)) + 
-    geom_raster() + labs(x = "Week", y=NULL, fill = "how zoopy?") +
-    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
-    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
-(ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Zoop_score)) + 
-    geom_boxplot() + labs(x = NULL, y = "Zoopiness") +
-    theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
-# ---
-
 #dput(RColorBrewer::brewer.pal(9, "Set1"))
 c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999") 
 
@@ -318,14 +304,14 @@ dev.off()
 
 # PCA for point wq ---
 
-# filter var of interest
-pc_in <- data.frame(wqp[,c("Sitefac", "Temp", "DO_mgl", "SPC_uscm", "TDS_mgl", "Sal_psu", "pH",           
-                "Turb_fnu", "PC_ugl", "CHL_ugl", "fdom_qsu")])
+# filter var of interest; temp too variable (discrete data), sal and TDS same as SPC (put it back later)
+pc_in <- data.frame(wqp[,c("Sitefac", "Date", "DO_mgl", "SPC_uscm", "TDS_mgl", "Sal_psu", "pH",           
+                "Turb_fnu", "PC_ugl", "CHL_ugl", "fdom_qsu", "Zoop_score", "week")])
 rownames(pc_in) <- paste(wqp$Site,wqp$RowID)
 pc_in <- drop_na(pc_in)
 
 # PCA calculation
-pc <- prcomp(subset(pc_in, select=-Sitefac), scale=T)
+pc <- prcomp(subset(pc_in, select=-c(Sitefac, Date, week)), scale=T)
 pc$rotation <- -1*pc$rotation
 pc$x <- -1*pc$x
 
@@ -337,6 +323,8 @@ pc2_v <- round(pc_var[2] * 100, 1)
 # create new df for plotting scores
 pc_score <- as.data.frame(pc$x[, 1:2])
 pc_score$Sitefac <- pc_in$Sitefac
+pc_score$Date <- pc_in$Date
+pc_score$week <- pc_in$week
 
 # df for plotting each var within the PC
 pc_load <- as.data.frame(pc$rotation[, 1:2])
@@ -348,9 +336,12 @@ conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2))
 
 # plot, need to adjust aesthetics
   # tds and spc are basically the same, full overlap
-pcaplot <- ggplot()+
-  geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac),
-             shape=1)+
+
+png("Output/Figures/YBLTE_wq_PCA_%02d.png",
+    height = 10, width = 10, units = "in", res = 1000, family = "serif")
+
+(pcaplot <- ggplot(data = pc_score, aes())+
+  geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
   geom_polygon(data=conv_hull, aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
                alpha=0.1)+
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
@@ -358,9 +349,59 @@ pcaplot <- ggplot()+
   ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
                             fill="dimgrey", color="white", 
                             segment.color="dimgrey", alpha=0.8,
-                            label=rownames(pc_load_scaled))+
+                            label=rownames(pc_load_scaled), seed=25)+
   labs(title = "Point Water Quality PCA",
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
-       color="Site", fill="Site")+
-  theme_bw()
+       color="Site", fill="Site", shape="Site")+
+  theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() + 
+  scale_shape_manual(values = c(1:14)))
+
+dev.off()
+
+# testing animation for pca
+library(gganimate)
+library(magick)
+
+# pca plots, animated by week (starts at 2 where no missing data)
+pcaplots <- ggplot(data = pc_score, aes())+
+  geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac,
+                                size=ifelse(Sitefac=="FWBN", 5, 3)))+
+  geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
+               alpha=0.5, color="black", linewidth=0.8)+
+  ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
+                            fill="dimgrey", color="white",
+                            segment.color="dimgrey", alpha=0.8,
+                            label=rownames(pc_load_scaled), seed=25)+
+  labs(title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
+       x=paste0("PC1 (", pc1_v, "% Variance)"),
+       y=paste0("PC2 (", pc2_v, "% Variance)"),
+       color="Site", shape="Site", size=NULL)+guides(size = "none")+
+  theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() +
+  scale_shape_manual(values = c(1:14))
+
+pcgif <- image_read(animate(
+  pcaplots+transition_time(week)+enter_fade() + exit_fade(),
+  height=400, width=600))
+
+# stage plots, animated by date (should line up with pca plots because same time frame)
+stageplot <- ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]
+                    %>% filter(between(Datetime, min(pc_score$Date),max(pc_score$Date))),
+                     aes(x = Datetime, y = stage_ft, color = Sitefac)) +
+    geom_line(linewidth = 1, alpha = 0.7) +
+    scale_color_viridis_d() +
+    theme_bw() + labs(, y = "Stage (ft)", x = NULL, color = "Site")
+
+stggif <- image_read(animate(
+  stageplot+transition_reveal(Datetime),
+  height=400, width=600))
+
+# combine pca and stage animations
+animation <- image_append(c(pcgif[1], stggif[1]), stack = T)
+for(i in 2:100){
+  combined_gif <- image_append(c(pcgif[i], stggif[i]), stack = T)
+  animation <- c(animation, combined_gif)
+}
+
+# save as gif
+anim_save("Output/Figures/pca_stage.gif", animation)
