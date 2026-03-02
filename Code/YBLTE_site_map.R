@@ -11,8 +11,9 @@ library(ggrepel)
 library(ggspatial)
 library(readxl)
 
-API = T
-saveoutput = F
+API = F        # Should spatial data be download from APIs? If F will use cached data.
+savecache = F  # Overwrite downloaded spatial data
+saveoutput = F # Overwrite map figure
 # Data procurement ---------------------------------------------------------
 
 # Read Excel file
@@ -78,7 +79,7 @@ if(API){
   # Filter roads to only those within Sacramento and Yolo Counties
   roads_filtered <- st_intersection(roads, counties_clip_boundary)
   
-  if(saveoutput == T){save(polygons, bypasses, rivers_major, roads_filtered, ywa_poly,
+  if(savecache == T){save(polygons, bypasses, rivers_major, roads_filtered, ywa_poly,
        file = "data/spatial/Yolo_map_data.Rdata")}
 
 }else{
