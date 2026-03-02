@@ -2,7 +2,7 @@
 
 ## Load libraries ----
 library(tidyverse)
-
+library(lubridate)
 ## Set variables ----
 download_data <- F
 saveplots <- F
@@ -186,3 +186,43 @@ if(saveplots == T){
 }
 
 
+# Create cummulative flow plots -------------------------------------------
+
+# 1. Assign water year
+cdec_wide_wy <- cdec_wide %>%
+  mutate(
+    wy = if_else(month(Date) >= 10, year(Date) + 1, year(Date))
+  )
+
+# 2. Aggregate to daily discharge per tributary per water year
+daily_flow <- cdec_wide_wy %>%
+  group_by(Site_no, wy, Date) %>%
+  summarize(
+    daily_cfs = sum(discharge_cfs, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# 3. Compute cumulative discharge within each water year
+cum_flow_wy <- daily_flow %>%
+  arrange(Site_no, wy, Date) %>%
+  group_by(Site_no, wy) %>%
+  mutate(
+    cum_cfs = cumsum(daily_cfs)
+  ) %>%
+  ungroup()
+
+# 4. Plot cumulative flow by water year
+png(paste0("Output/Figures/YBLTE_contflow/YBLTE_Cumm_flow_all_years_%02d.png"),
+    width = 10, height = 6, units = "in", res = 1000, family = "serif")
+ggplot(cum_flow_wy[cum_flow_wy$Site_no %in% c("CCY", "FRE", "RCS", "PTC"),], 
+       aes(Date, cum_cfs/1000, color = Site_no)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ wy, scales = "free") +
+  scale_color_brewer(palette = "Set1") +
+  theme_bw() +
+  labs(title = "Cumulative Flow by Water Year",
+       x = "Date",
+       y = "Cumulative Discharge (1kcfs-days)",
+       color = "Tributary") +
+  scale_x_date(date_breaks = "2 months", date_labels = "%b")
+dev.off()
