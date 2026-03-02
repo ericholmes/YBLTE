@@ -4,7 +4,7 @@
 library(tidyverse)
 
 ## Set variables ----
-download_data <- T
+download_data <- F
 saveplots <- F
 
 cdec_stations <- c("YBY", "LIS", "RCS", "FWD", "PTC", "FRE", "CCY", "KNL")
@@ -36,7 +36,7 @@ lischl <- downloadCDEC(site_no = "LIS", parameterCd = 28, startDT = startdate, e
 lisec <- downloadCDEC(site_no = "LIS", parameterCd = 100, startDT = startdate, endDT = enddate)
 
 ##save(lischl, lisec, file = "Data/cdec_lis_chl+ec.Rdata")
-
+# load(file = "Data/cdec_lis_chl+ec.Rdata")
 lischl$Param_val <- as.numeric(lischl$Param_val)
 lisec$Param_val <- as.numeric(lisec$Param_val)
 
@@ -135,179 +135,54 @@ ggplot(cdecply[is.na(cdecply$medianfcs) == F,],
 
 cdec_wide$year <- format(cdec_wide$Date, format = "%Y")
 
-#2017
+# Loop for all years of interest ------------------------------------------
+saveplots = T
+if(saveplots == T){
+  for(year in 2016:2026){
+    print(paste0("Working on year: ", year))
+    cdec_wide_temp <- cdec_wide[cdec_wide$Datetime > as.POSIXct(paste0(year - 1, "-10-01")) &  
+                                  cdec_wide$Datetime < as.POSIXct(paste0(year, "-05-01")),]
+    
+    ybyplot <- ggplot(cdec_wide_temp[cdec_wide_temp$Site_no %in% c("CCY", "RCS", "PTC", "FRE"),], 
+                      aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+      geom_ribbon(data = cdec_wide_temp[cdec_wide_temp$Site_no %in% c("FRE"),],
+                aes(ymax = discharge_cfs, ymin = 0), color = NA, fill = "slateblue4", alpha = .2) + 
+      geom_line() + theme_bw() + labs(title = paste("WY", year), x = NULL) +
+      scale_color_brewer(palette = "Set1") +
+      scale_x_datetime(limits = c(
+          as.POSIXct(paste0(year - 1, "-10-01")),
+          as.POSIXct(paste0(year, "-05-01"))),
+        date_breaks = "1 month",
+        date_labels = "%b-%d"
+      ) +
+      coord_cartesian(clip = "off",
+        ylim = c(0, max(cdec_wide_temp[cdec_wide_temp$Site_no %in% c("CCY", "RCS", "PTC"), "discharge_cfs"], na.rm = T)))
+    
+    perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year %in% (year - 1):year,], 
+                          aes(x = Date, y = percflow, fill = Site_no)) + 
+      scale_fill_brewer(palette = "Set1") + labs(x = NULL) +
+      geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
+      scale_x_date(limits = c(as.Date(paste0(year - 1, "-10-01")),
+                              as.Date(paste0(year, "-05-01"))),
+                   date_breaks = "1 month", date_labels = "%b-%d")
+    
+    chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
+      geom_line(color = "forestgreen") + theme_bw() + labs(x = NULL) +
+      scale_x_date(limits = c(as.Date(paste0(year - 1, "-10-01")),
+                              as.Date(paste0(year, "-05-01"))),
+                   date_breaks = "1 month", date_labels = "%b-%d")
+    
+    ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
+      geom_line(color = "orange") + theme_bw() +
+      scale_x_date(limits = c(as.Date(paste0(year - 1, "-10-01")),
+                              as.Date(paste0(year, "-05-01"))),
+                   date_breaks = "1 month", date_labels = "%b-%d")
+    
+    png(paste0("Output/Figures/YBLTE_contflow/YBLTE_Cont_flow", year,"_%02d.png"),
+        height = 10, width = 6, units = "in", res = 1000, family = "serif")
+    print(cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v"))
+    dev.off()
+  }
+}
 
-(ybyplot <- ggplot(cdec_wide[cdec_wide$Site_no == "YBY",], 
-       aes(x = Datetime, y = discharge_cfs)) + geom_line() + theme_bw() +
-  xlim(as.POSIXct("2017-01-01"), as.POSIXct("2017-07-01")))
 
-(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year == 2017,], 
-       aes(x = Date, y = percflow, fill = Site_no)) + 
-  geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
-  xlim(as.Date("2017-01-01"), as.Date("2017-07-01")))
-
-
-
-(chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
-  geom_line(color = "forestgreen") + theme_bw() +
-    xlim(as.Date("2017-01-01"), as.Date("2017-07-01")))
-
-(ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
-  geom_line(color = "orange") + theme_bw() +
-    xlim(as.Date("2017-01-01"), as.Date("2017-07-01")))
-
-if(saveplots == T){png("Output/Figures/YBLTE_Cont_flow2017_%02d.png",
-    height = 10, width = 6, units = "in", res = 1000, family = "serif")}
-cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v")
-if(saveplots == T){dev.off()}
-
-
-
-#2016
-
-(ybyplot <- ggplot(cdec_wide[cdec_wide$Site_no == "YBY" & cdec_wide$year %in% 2016,], 
-                   aes(x = Datetime, y = discharge_cfs)) + geom_line() + theme_bw() +
-    xlim(as.POSIXct("2016-01-01"), as.POSIXct("2016-07-01")))
-
-(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year == 2016,], 
-                       aes(x = Date, y = percflow, fill = Site_no)) + 
-    geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
-    xlim(as.Date("2016-01-01"), as.Date("2016-07-01")))
-
-(chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
-    geom_line(color = "forestgreen") + theme_bw() +
-    xlim(as.Date("2016-01-01"), as.Date("2016-07-01")))
-
-(ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
-    geom_line(color = "orange") + theme_bw() +
-    xlim(as.Date("2016-01-01"), as.Date("2016-07-01")))
-
-if(saveplots == T){png("Output/Figures/YBLTE_Cont_flow2016_%02d.png",
-    height = 10, width = 6, units = "in", res = 1000, family = "serif")}
-cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v")
-if(saveplots == T){dev.off()}
-
-#2018
-
-(ybyplot <- ggplot(cdec_wide[cdec_wide$Site_no == "YBY" & cdec_wide$year %in% 2018,], 
-                   aes(x = Datetime, y = discharge_cfs)) + geom_line() + theme_bw() +
-    xlim(as.POSIXct("2018-01-01"), as.POSIXct("2018-07-01")))
-
-(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year == 2018,], 
-                       aes(x = Date, y = percflow, fill = Site_no)) + 
-    geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
-    xlim(as.Date("2018-01-01"), as.Date("2018-07-01")))
-
-(chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
-    geom_line(color = "forestgreen") + theme_bw() +
-    xlim(as.Date("2018-01-01"), as.Date("2018-07-01")))
-
-(ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
-    geom_line(color = "orange") + theme_bw() +
-    xlim(as.Date("2018-01-01"), as.Date("2018-07-01")))
-
-if(saveplots == T){png("Output/Figures/YBLTE_Cont_flow2018_%02d.png",
-    height = 10, width = 6, units = "in", res = 1000, family = "serif")}
-cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v")
-if(saveplots == T){dev.off()}
-
-#2019
-
-(ybyplot <- ggplot(cdec_wide[cdec_wide$Site_no == "YBY" & cdec_wide$year %in% 2019,], 
-                   aes(x = Datetime, y = discharge_cfs)) + geom_line() + theme_bw() +
-    xlim(as.POSIXct("2019-01-01"), as.POSIXct("2019-07-01")))
-
-(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year == 2019,], 
-                       aes(x = Date, y = percflow, fill = Site_no)) + 
-    geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
-    xlim(as.Date("2019-01-01"), as.Date("2019-07-01")))
-
-(chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
-    geom_line(color = "forestgreen") + theme_bw() +
-    xlim(as.Date("2019-01-01"), as.Date("2019-07-01")))
-
-(ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
-    geom_line(color = "orange") + theme_bw() +
-    xlim(as.Date("2019-01-01"), as.Date("2019-07-01")))
-
-if(saveplots == T){png("Output/Figures/YBLTE_Cont_flow2019_%02d.png",
-    height = 10, width = 6, units = "in", res = 1000, family = "serif")}
-cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v")
-if(saveplots == T){dev.off()}
-
-#2023
-
-(ybyplot <- ggplot(cdec_wide[cdec_wide$Site_no == "YBY" & cdec_wide$year %in% 2023,], 
-                   aes(x = Datetime, y = discharge_cfs)) + geom_line() + theme_bw() +
-    xlim(as.POSIXct("2023-01-01"), as.POSIXct("2023-07-01")))
-
-(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year == 2023,], 
-                       aes(x = Date, y = percflow, fill = Site_no)) + 
-    geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
-    xlim(as.Date("2023-01-01"), as.Date("2023-07-01")))
-
-(chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
-    geom_line(color = "forestgreen") + theme_bw() +
-    xlim(as.Date("2023-01-01"), as.Date("2023-07-01")))
-
-(ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
-    geom_line(color = "orange") + theme_bw() +
-    xlim(as.Date("2023-01-01"), as.Date("2023-07-01")))
-
-if(saveplots == T){png("Output/Figures/YBLTE_Cont_flow2023_%02d.png",
-    height = 10, width = 6, units = "in", res = 1000, family = "serif")}
-cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v")
-if(saveplots == T){dev.off()}
-
-#2025
-
-(ybyplot <- ggplot(cdec_wide[cdec_wide$Site_no == "YBY" & cdec_wide$year %in% 2025,], 
-                   aes(x = Datetime, y = discharge_cfs)) + geom_line() + theme_bw() +
-    xlim(as.POSIXct("2025-01-01"), as.POSIXct("2025-07-01")))
-
-(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year == 2025,], 
-                       aes(x = Date, y = percflow, fill = Site_no)) + 
-    geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
-    xlim(as.Date("2025-01-01"), as.Date("2025-07-01")))
-
-(chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
-    geom_line(color = "forestgreen") + theme_bw() +
-    xlim(as.Date("2025-01-01"), as.Date("2025-07-01")))
-
-(ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
-    geom_line(color = "orange") + theme_bw() +
-    xlim(as.Date("2025-01-01"), as.Date("2025-07-01")))
-
-if(saveplots == T){png("Output/Figures/YBLTE_Cont_flow2025_%02d.png",
-                       height = 10, width = 6, units = "in", res = 1000, family = "serif")}
-cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v")
-if(saveplots == T){dev.off()}
-
-#2026
-cdec_wide2026 <- cdec_wide[cdec_wide$Datetime > as.POSIXct("2025-10-01") &  
-                               cdec_wide$Datetime < as.POSIXct("2026-05-01"),]
-
-(ybyplot <- ggplot(cdec_wide2026[cdec_wide2026$Site_no %in% c("CCY", "RCS", "FRE", "PTC"),], 
-                   aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
-    geom_line() + theme_bw() + 
-    scale_color_brewer(palette = "Set1") +
-    xlim(as.POSIXct("2025-10-01"), as.POSIXct("2026-05-01")))
-
-(perflowplot <- ggplot(cdecply[is.na(cdecply$medianfcs) == F & cdecply$year %in% 2025:2026,], 
-                       aes(x = Date, y = percflow, fill = Site_no)) + 
-    scale_fill_brewer(palette = "Set1") +
-    geom_bar(stat = "identity") + theme_bw() + ylim(0,100) +
-    xlim(as.Date("2025-10-01"), as.Date("2026-05-01")))
-
-(chlplot <- ggplot(lischlply[lischlply$medchl < 100,], aes(x = Date, y = medchl)) + 
-    geom_line(color = "forestgreen") + theme_bw() +
-    xlim(as.Date("2025-10-01"), as.Date("2026-05-01")))
-
-(ecplot <- ggplot(lisecply, aes(x = Date, y = medec)) + 
-    geom_line(color = "orange") + theme_bw() +
-    xlim(as.Date("2025-10-01"), as.Date("2026-05-01")))
-
-if(saveplots == T){png("Output/Figures/YBLTE_Cont_flow2026_%02d.png",
-                       height = 10, width = 6, units = "in", res = 1000, family = "serif")}
-cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v")
-if(saveplots == T){dev.off()}
