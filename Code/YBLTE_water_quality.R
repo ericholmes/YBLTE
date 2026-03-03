@@ -304,9 +304,9 @@ dev.off()
 
 # PCA for point wq ---
 
-# filter var of interest; temp too variable (discrete data), sal and TDS same as SPC (put it back later)
-pc_in <- data.frame(wqp[,c("Sitefac", "Date", "DO_mgl", "SPC_uscm", "TDS_mgl", "Sal_psu", "pH",           
-                "Turb_fnu", "PC_ugl", "CHL_ugl", "fdom_qsu", "Zoop_score", "week")])
+# filter var of interest; temp too variable (discrete data), sal and TDS like SPC, pc like chlorop
+pc_in <- data.frame(wqp[,c("Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
+                "Turb_fnu", "CHL_ugl", "fdom_qsu", "Zoop_score", "week")])
 rownames(pc_in) <- paste(wqp$Site,wqp$RowID)
 pc_in <- drop_na(pc_in)
 
@@ -332,7 +332,7 @@ scaling_factor <- 1.2 * max(abs(pc_score[, 1:2]))
 pc_load_scaled <- pc_load*scaling_factor
 
 # calculate convex hull by site
-conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2))
+conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subset(select=-c(week))
 
 # plot, need to adjust aesthetics
   # tds and spc are basically the same, full overlap
@@ -364,31 +364,42 @@ library(gganimate)
 library(magick)
 
 # pca plots, animated by week (starts at 2 where no missing data)
-pcaplots <- ggplot(data = pc_score, aes())+
-  geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac,
-                                size=ifelse(Sitefac=="FWBN", 5, 3)))+
+
+pcaplots <- ggplot()+
+  geom_polygon(data=conv_hull, aes(x=PC1, y=PC2, fill=Sitefac),
+               alpha=0.1)+
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
-               alpha=0.5, color="black", linewidth=0.8)+
+               alpha=0.2, color="black", linewidth=0.8)+
+  geom_point(data=pc_score%>% subset(select=-c(week)), aes(x=PC1, y=PC2, 
+      color=Sitefac, shape=Sitefac), alpha=0.4)+
   ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
                             fill="dimgrey", color="white",
-                            segment.color="dimgrey", alpha=0.8,
+                            segment.color="dimgrey", alpha=0.5,
                             label=rownames(pc_load_scaled), seed=25)+
+  geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac, 
+             size=ifelse(Sitefac=="FWBN", 2.5, 2)), stroke=2)+
   labs(title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
-       color="Site", shape="Site", size=NULL)+guides(size = "none")+
+       color="Site", shape="Site")+guides(fill = "none", size = "none")+
   theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() +
-  scale_shape_manual(values = c(1:14))
+  scale_shape_manual(values = c(16, 2:14))
 
 pcgif <- image_read(animate(
   pcaplots+transition_time(week)+enter_fade() + exit_fade(),
-  height=400, width=600))
+  height=500, width=600))
 
 # stage plots, animated by date (should line up with pca plots because same time frame)
-stageplot <- ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]
-                    %>% filter(between(Datetime, min(pc_score$Date),max(pc_score$Date))),
+stage_in_time <- cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]%>% 
+  filter(between(Datetime, min(pc_score$Date),max(pc_score$Date)))
+stageplot <- ggplot(stage_in_time,
                      aes(x = Datetime, y = stage_ft, color = Sitefac)) +
+    geom_hline(yintercept = 32, color="red4", alpha = 0.5, linetype = 2, linewidth = 1)+
     geom_line(linewidth = 1, alpha = 0.7) +
+    annotate("text", x = unique(pc_score$Date)[4], y=33, color="red4",
+             label="Fremont Weir Overtop at 32 ft")+
+    geom_ribbon(data=stage_in_time %>% filter(stage_ft>=32), 
+                aes(ymin=32,ymax=stage_ft), fill="red4", alpha=0.5, outline.type="lower")+
     scale_color_viridis_d() +
     theme_bw() + labs(, y = "Stage (ft)", x = NULL, color = "Site")
 
