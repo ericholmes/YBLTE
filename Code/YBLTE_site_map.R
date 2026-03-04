@@ -17,7 +17,7 @@ saveoutput = F # Overwrite map figure
 # Data procurement ---------------------------------------------------------
 
 # Read Excel file
-proj_raw <- read_excel("C:/Users/eholmes/Box/Yolo_Food_Web/Data/tabular/YBLTE_sites.xlsx")
+proj_raw <- read_excel("Data/tabular/YBLTE_sites.xlsx")
 
 # Convert to sf points (WGS84)
 proj_pts <- proj_raw %>%
@@ -181,21 +181,29 @@ if(saveoutput == T){tiff("Output/Maps/Yolo_restoration_projects_scale_%02da.tif"
                                  height = 6, width = 4, units = "in", res = 1000, family = "serif", compression = "lzw")}
 
 ggplot() + 
-  geom_sf(data = yolo_bypass, fill = "wheat2", color = NA) +
+  geom_sf(data = yolo_bypass, aes(fill = "a"), color = NA) +
   geom_sf(data = WW_Watershed_wgs84, fill = "slateblue3", color = "slateblue3") +
   geom_sf(data = rivers_major, color = "slateblue3") +
-  geom_sf(data = yolo_rest_polys[yolo_rest_polys$HRL == F, ], color = "white", fill = "forestgreen") + 
-  geom_sf(data = yolo_rest_polys[yolo_rest_polys$HRL == T, ], color = "brown", fill = "orange") + theme_bw() +
+  geom_sf(data = yolo_rest_polys[yolo_rest_polys$HRL == F, ], color = "white", aes(fill = "b")) + 
+  geom_sf(data = yolo_rest_polys[yolo_rest_polys$HRL == T, ], color = "brown", aes(fill = "c")) + theme_bw() +
   geom_sf(data = roads_filtered, color = "grey60") +
-  geom_sf(data = proj_pts, color = "red", size = 3) +
-  geom_label_repel(aes(x = -121.89, y = 38.511, label = "Putah Creek"), 
-             data = NULL, fill = "tan2", size = 2.5) +
-  geom_label_repel(aes(x = -121.79, y = 38.825, label = "Sacramento\nRiver"), 
-                   data = NULL, fill = "tan2", size = 2.5, force = 0) +
-  geom_label_repel(aes(x = -121.595, y = 38.825, label = "Feather\nRiver"), 
-                   data = NULL, fill = "tan2", size = 2.5, force = 0) +
-  geom_label_repel( data = proj_pts, aes(geometry = geometry, label = Site_id), 
-                    stat = "sf_coordinates", size = 3, fill = "white" ) +
+  scale_fill_manual(values = c('a' = 'wheat2', 'b' = 'forestgreen', 'c' = 'orange'),
+                     labels = c('Yolo Bypass', 'non-HRL Project Area', 'HRL Project'),
+                     name = NULL) +
+  geom_sf(data = proj_pts, aes(color = Sitetype, shape = Sitetype), size = 3.5) +
+  scale_color_manual(values = c(alpha("blue", 0.7), alpha("red", 0.7), alpha("green", 0.7))) +
+  geom_text_repel(aes(x = -121.89, y = 38.511, label = "Putah Creek"), 
+             data = NULL, color = "slateblue3", size = 3, fontface = "bold",
+             bg.color = "white", bg.r = 0.1) +
+  geom_text_repel(aes(x = -121.79, y = 38.825, label = "Sacramento\nRiver"), 
+                   data = NULL, color = "slateblue3", size = 3, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1, force = 0) +
+  geom_text_repel(aes(x = -121.595, y = 38.825, label = "Feather\nRiver"), 
+                   data = NULL, color = "slateblue3", size = 3, fontface = "bold",
+                   bg.color = "white", bg.r = 0.1, force = 0) +
+  geom_text_repel(data = proj_pts, aes(geometry = geometry, label = Site_id), 
+                    stat = "sf_coordinates", size = 3, bg.color = alpha("black", 0.5),
+                   color = "white", bg.r = 0.2, fontface = "bold") +
   coord_sf(xlim = c(-121.9, -121.4), ylim = c(38.15, 38.85), expand = FALSE) +
   annotation_scale(location = "bl", width_hint = 0.2, line_width = 1,
                    pad_x = unit(.35, "in")) + 
@@ -203,8 +211,9 @@ ggplot() +
                          style = north_arrow_fancy_orienteering(),
                          height = unit(0.3,"in"), width = unit(0.3,"in"),
                          pad_x = unit(.02, "in"),pad_y = unit(.02, "in")) + 
-  labs(main = "Map of Yolo Bypass Restoration Projects",
-       x = NULL, y = NULL)
+  labs(title = "Map of Yolo Bypass Restoration Projects",
+       x = NULL, y = NULL, shape = "Site Type", color = "Site Type")
 
 if(saveoutput == T){dev.off()}
+
 
