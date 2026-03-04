@@ -32,7 +32,7 @@ wqp$Zoop_score <- as.numeric(wqp$Zoop_score)
 ##Download gage data ----
 ### CDEC ----
 
-cdec_stations <- c("YBT", "YBY", "LIS", "RCS", "FWD", "PTC", "KNL", "I80")
+cdec_stations <- c("YBT", "YBY", "LIS", "RCS", "FRE", "FWD", "PTC", "KNL", "I80")
 
 # sensor is param name, sensor_num is for access
 sensor_codes <- data.frame(sensor = c("chla", "ec", "discharge_cfs", "fdom", 
@@ -255,12 +255,12 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
     # scale_color_brewer(palette = "Set1") +
     theme_bw() + labs(title = "Tule Pond Stage", y = "Stage (ft)", x = NULL))
 
-cdec_wide_stage <- cdec_wide[cdec_wide$Site_no %in% c("KNL", "RCS", "YBT", "YBY", "I80", "LIS") &
+cdec_wide_stage <- cdec_wide[cdec_wide$Site_no %in% c("KNL", "RCS", "FRE", "YBT", "YBY", "I80", "LIS") &
                                cdec_wide$stage_ft < 60 & 
                                !(cdec_wide$stage_ft > 20 & cdec_wide$Site_no == "LIS") &
                                !(cdec_wide$stage_ft < 10 & cdec_wide$Site_no == "YBT"),]
 
-cdec_wide_stage$Sitefac <-  factor(cdec_wide_stage$Site_no, levels = c("KNL", "RCS", "YBT", "YBY", "I80", "LIS"))
+cdec_wide_stage$Sitefac <-  factor(cdec_wide_stage$Site_no, levels = c("KNL", "RCS", "FRE", "YBT", "YBY", "I80", "LIS"))
 
 (stageplot <- ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
                      aes(x = Datetime, y = stage_ft, color = Sitefac)) + 
@@ -377,7 +377,7 @@ pcaplots <- ggplot()+
                             segment.color="dimgrey", alpha=0.5,
                             label=rownames(pc_load_scaled), seed=25)+
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac, 
-             size=ifelse(Sitefac=="FWBN", 2.5, 2)), stroke=2)+
+             size=ifelse(Sitefac=="FWBN", 3, 2)), stroke=2)+
   labs(title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
@@ -387,25 +387,26 @@ pcaplots <- ggplot()+
 
 pcgif <- image_read(animate(
   pcaplots+transition_time(week)+enter_fade() + exit_fade(),
-  height=500, width=600))
+  height=500, width=600, fps = 5))
 
 # stage plots, animated by date (should line up with pca plots because same time frame)
 stage_in_time <- cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]%>% 
   filter(between(Datetime, min(pc_score$Date),max(pc_score$Date)))
 stageplot <- ggplot(stage_in_time,
                      aes(x = Datetime, y = stage_ft, color = Sitefac)) +
+    geom_line(data = stage_in_time %>% filter(Site_no == "FRE"), linewidth = 2, alpha = 0.5) +
     geom_hline(yintercept = 32, color="red4", alpha = 0.5, linetype = 2, linewidth = 1)+
     geom_line(linewidth = 1, alpha = 0.7) +
     annotate("text", x = unique(pc_score$Date)[4], y=33, color="red4",
              label="Fremont Weir Overtop at 32 ft")+
-    geom_ribbon(data=stage_in_time %>% filter(stage_ft>=32), 
+    geom_ribbon(data=stage_in_time %>% filter(Site_no == "FRE") %>% filter(stage_ft>=32), 
                 aes(ymin=32,ymax=stage_ft), fill="red4", alpha=0.5, outline.type="lower")+
     scale_color_viridis_d() +
     theme_bw() + labs(, y = "Stage (ft)", x = NULL, color = "Site")
 
 stggif <- image_read(animate(
   stageplot+transition_reveal(Datetime),
-  height=400, width=600))
+  height=400, width=600, fps = 5))
 
 # combine pca and stage animations
 animation <- image_append(c(pcgif[1], stggif[1]), stack = T)

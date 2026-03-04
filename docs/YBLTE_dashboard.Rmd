@@ -62,13 +62,14 @@ leaflet(rest_polys) %>%
     lng = ~Lon, lat = ~Lat,
     radius = 6, color = "red",
     fillColor = "yellow", fillOpacity = 0.8,
-    popup = ~paste0("<b>Project:</b> ", Site_id)
+    popup = ~paste0("<b>Project:</b> ", Site_id, " (", Sitename, ")<br>", Sitetype, " Site")
   ) %>%
   addLayersControl(
     baseGroups = c("Imagery"),
     overlayGroups = c("Restoration Projects"),
     options = layersControlOptions(collapsed = FALSE)
-  )
+  ) %>% 
+  setView(lat = 38.45, lng = -121.6, zoom = 9)
 ```
 Heatmap
 =====================================
