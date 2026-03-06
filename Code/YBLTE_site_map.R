@@ -177,8 +177,8 @@ yolo_projects <- data.frame(project_name = c("Yolo Flyway Farms Tidal Habitat Re
 yolo_rest_polys <- merge(rest_polys, yolo_projects, by = "project_name", all.y = T)
 WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 
-if(saveoutput == T){tiff("Output/Maps/Yolo_restoration_projects_scale_%02da.tif",
-                                 height = 6, width = 4, units = "in", res = 1000, family = "serif", compression = "lzw")}
+if(saveoutput == T){tiff("Output/Maps/Yolo_restoration_projects_scale%02da.tif",
+                                 height = 6, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")}
 
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = "a"), color = NA) +
@@ -202,8 +202,9 @@ ggplot() +
                    data = NULL, color = "slateblue3", size = 3, fontface = "bold",
                    bg.color = "white", bg.r = 0.1, force = 0) +
   geom_text_repel(data = proj_pts, aes(geometry = geometry, label = Site_id), 
-                    stat = "sf_coordinates", size = 3, bg.color = alpha("black", 0.5),
-                   color = "white", bg.r = 0.2, fontface = "bold") +
+                   stat = "sf_coordinates", size = 3, bg.color = alpha("black", 0.5),
+                   color = "white", bg.r = 0.2, fontface = "bold", point.padding = 3
+                   ) +
   coord_sf(xlim = c(-121.9, -121.4), ylim = c(38.15, 38.85), expand = FALSE) +
   annotation_scale(location = "bl", width_hint = 0.2, line_width = 1,
                    pad_x = unit(.35, "in")) + 

@@ -387,7 +387,7 @@ pcaplots <- ggplot()+
 
 pcgif <- image_read(animate(
   pcaplots+transition_time(week)+enter_fade() + exit_fade(),
-  height=500, width=600, fps = 5))
+  height=500, width=600, fps = 7))
 
 # stage plots, animated by date (should line up with pca plots because same time frame)
 stage_in_time <- cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]%>% 
@@ -406,7 +406,7 @@ stageplot <- ggplot(stage_in_time,
 
 stggif <- image_read(animate(
   stageplot+transition_reveal(Datetime),
-  height=400, width=600, fps = 5))
+  height=400, width=600, fps = 7))
 
 # combine pca and stage animations
 animation <- image_append(c(pcgif[1], stggif[1]), stack = T)

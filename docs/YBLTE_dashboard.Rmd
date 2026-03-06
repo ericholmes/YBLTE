@@ -63,11 +63,15 @@ leaflet(rest_polys) %>%
     radius = 6, color = "red",
     fillColor = "yellow", fillOpacity = 0.8,
     popup = ~paste0("<b>Project:</b> ", Site_id, " (", Sitename, ")<br>", Sitetype, " Site<br>Data: ",
-                    ifelse(Point_wq=="y", "Point Water Quality - ", ""),
-                    ifelse(Zoop=="y", "Zooplankton - ", ""),
-                    ifelse(Fish=="y", "Fish - ", ""),
-                    ifelse(DOBO=="y", "DOBO - ", ""))
-  ) %>%
+                    ifelse(Point_wq=="n", "", "Point Water Quality - "),
+                    ifelse(Point_wq=="p", "(partial) - ", ""),
+                    ifelse(Zoop=="n", "", "Zooplankton - "),
+                    ifelse(Zoop=="p", "(partial) - ", ""),
+                    ifelse(Fish=="n", "", "Fish - "),
+                    ifelse(Fish=="p", "(partial) - ", ""),
+                    ifelse(DOBO=="n", "", "DOBO - "),
+                    ifelse(DOBO=="p", "(partial) - ", "")) 
+    )%>%
   addLayersControl(
     baseGroups = c("Imagery"),
     overlayGroups = c("Restoration Projects"),
