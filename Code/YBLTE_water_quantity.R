@@ -4,7 +4,7 @@
 library(tidyverse)
 library(lubridate)
 ## Set variables ----
-download_data <- F
+download_data <- T
 saveplots <- F
 
 cdec_stations <- c("YBY", "LIS", "RCS", "FWD", "PTC", "FRE", "CCY", "KNL")
@@ -136,7 +136,7 @@ ggplot(cdecply[is.na(cdecply$medianfcs) == F,],
 cdec_wide$year <- format(cdec_wide$Date, format = "%Y")
 
 # Loop for all years of interest ------------------------------------------
-saveplots = T
+
 if(saveplots == T){
   for(year in 2016:2026){
     print(paste0("Working on year: ", year))
@@ -212,8 +212,8 @@ cum_flow_wy <- daily_flow %>%
   ungroup()
 
 # 4. Plot cumulative flow by water year
-png(paste0("Output/Figures/YBLTE_contflow/YBLTE_Cumm_flow_all_years_%02d.png"),
-    width = 10, height = 6, units = "in", res = 1000, family = "serif")
+if(saveplots == T){png(paste0("Output/Figures/YBLTE_contflow/YBLTE_Cumm_flow_all_years_%02d.png"),
+    width = 10, height = 6, units = "in", res = 1000, family = "serif")}
 ggplot(cum_flow_wy[cum_flow_wy$Site_no %in% c("CCY", "FRE", "RCS", "PTC"),], 
        aes(Date, cum_cfs/1000, color = Site_no)) +
   geom_line(linewidth = 0.7) +
@@ -225,4 +225,17 @@ ggplot(cum_flow_wy[cum_flow_wy$Site_no %in% c("CCY", "FRE", "RCS", "PTC"),],
        y = "Cumulative Discharge (1kcfs-days)",
        color = "Tributary") +
   scale_x_date(date_breaks = "2 months", date_labels = "%b")
-dev.off()
+
+ggplot(cum_flow_wy[cum_flow_wy$Site_no %in% c("CCY", "RCS", "PTC"),], 
+       aes(Date, cum_cfs/1000, color = Site_no)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ wy, scales = "free_x") +
+  scale_color_brewer(palette = "Set1") +
+  theme_bw() +
+  labs(title = "Cumulative Flow by Water Year",
+       x = "Date",
+       y = "Cumulative Discharge (1kcfs-days)",
+       color = "Tributary") +
+  scale_x_date(date_breaks = "2 months", date_labels = "%b")
+
+if(saveplots == T){dev.off()}
