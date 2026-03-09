@@ -32,7 +32,7 @@ wqp$Zoop_score <- as.numeric(wqp$Zoop_score)
 ##Download gage data ----
 ### CDEC ----
 
-cdec_stations <- c("YBT", "YBY", "LIS", "RCS", "FRE", "FWD", "PTC", "KNL", "I80")
+cdec_stations <- c("YBT", "YBY", "LIS", "RCS", "FRE", "CCY", "FWD", "PTC", "KNL", "I80")
 
 # sensor is param name, sensor_num is for access
 sensor_codes <- data.frame(sensor = c("chla", "ec", "discharge_cfs", "fdom", 
@@ -221,7 +221,6 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
     labs(title = "Fluorescent Dissolved Organic Matter", y = "FDOM (QSU)", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu, color = Site)))
-# ---
 
 (contflowplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("LIS", "RCS", "YBY", "PTC") & is.na(cdec_wide$discharge_cfs) == F,], 
                         aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
@@ -304,9 +303,10 @@ dev.off()
 
 # PCA for point wq ---
 
-# filter var of interest; temp too variable (discrete data), sal and TDS like SPC, pc like chlorop
+# filter var of interest; temp too variable (discrete data),
+  # sal and TDS like SPC, pc like chlorop, zoop not significant and not at every site
 pc_in <- data.frame(wqp[,c("Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
-                "Turb_fnu", "CHL_ugl", "fdom_qsu", "Zoop_score", "week")])
+                "Turb_fnu", "CHL_ugl", "fdom_qsu", "week")])
 rownames(pc_in) <- paste(wqp$Site,wqp$RowID)
 pc_in <- drop_na(pc_in)
 
@@ -363,28 +363,83 @@ dev.off()
 library(gganimate)
 library(magick)
 
-# pca plots, animated by week (starts at 2 where no missing data)
+# fix colors for animations
+animCol <-  scale_color_manual(values = c("KNL" = "#440154FF",
+                                          "RCS" = "#482878FF",
+                                          "FRE" = "#B63679FF",
+                                          "YBT" = "#3E4A89FF",
+                                          "CCY" = "#FB8861FF",
+                                          "YBY" = "#31688EFF",
+                                          "PTC" = "#A8AB7D",
+                                          "FWBN" = "#B63679FF", 
+                                          "FW1" = "#440154FF", 
+                                          "KLWW" = "#482878FF",
+                                          "KNG3" = "#453581FF", 
+                                          "CCSYB" = "#FB8861FF",
+                                          "CNW" = "#34618DFF",
+                                          "RD22" = "#2B748EFF", 
+                                          "YBLR4" = "#24878EFF", 
+                                          "SB4" = "#1F998AFF",
+                                          "I80" = "#25AC82FF", 
+                                          "AL0" = "#40BC72FF",
+                                          "LIS" = "#67CC5CFF", 
+                                          "STTD" = "#73A32F", 
+                                          "TEW" = "#CBE11EFF",
+                                          "TER" = "#FDE725FF"))
+animFill <-  scale_fill_manual(values = c("KNL" = "#440154FF",
+                                          "RCS" = "#482878FF",
+                                          "FRE" = "#B63679FF",
+                                          "YBT" = "#3E4A89FF",
+                                          "CCY" = "#FB8861FF",
+                                          "YBY" = "#31688EFF",
+                                          "PTC" = "#FBFCA4",
+                                          "FWBN" = "#B63679FF", 
+                                          "FW1" = "#440154FF", 
+                                          "KLWW" = "#482878FF",
+                                          "KNG3" = "#453581FF", 
+                                          "CCSYB" = "#FB8861FF",
+                                          "CNW" = "#34618DFF",
+                                          "RD22" = "#2B748EFF", 
+                                          "YBLR4" = "#24878EFF", 
+                                          "SB4" = "#1F998AFF",
+                                          "I80" = "#25AC82FF", 
+                                          "AL0" = "#40BC72FF",
+                                          "LIS" = "#67CC5CFF", 
+                                          "STTD" = "#73A32F", 
+                                          "TEW" = "#CBE11EFF",
+                                          "TER" = "#FDE725FF"))
 
+# pca plots, animated by week (starts at 2 where no missing data)
 pcaplots <- ggplot()+
-  geom_polygon(data=conv_hull, aes(x=PC1, y=PC2, fill=Sitefac),
-               alpha=0.1)+
+  # conv hulls for tributaries
+  geom_polygon(data=conv_hull%>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")), 
+               aes(x=PC1, y=PC2, fill=Sitefac), alpha=0.3)+
+  # contributing variables to PC (lines)
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
                alpha=0.2, color="black", linewidth=0.8)+
+  # background points
   geom_point(data=pc_score%>% subset(select=-c(week)), aes(x=PC1, y=PC2, 
       color=Sitefac, shape=Sitefac), alpha=0.4)+
+  # variable labels
   ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
                             fill="dimgrey", color="white",
                             segment.color="dimgrey", alpha=0.5,
                             label=rownames(pc_load_scaled), seed=25)+
+  # animated points, sites of interest are bigger
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac, 
-             size=ifelse(Sitefac=="FWBN", 3, 2)), stroke=2)+
+             size=ifelse(Sitefac %in% c("FWBN", "KLWW", "CCSYB", "STTD"), 2, 1)), stroke=2,
+             alpha = 0.7)+
+  # stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
+  #                subset(select = -c(week)),
+  #              aes(x = PC1, y = PC2, color = Sitefac)) +  
   labs(title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
        color="Site", shape="Site")+guides(fill = "none", size = "none")+
-  theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() +
-  scale_shape_manual(values = c(16, 2:14))
+  theme_bw()+ animCol+ animFill +
+  scale_shape_manual(values = c(2:15))
 
+# animate pca plot
 pcgif <- image_read(animate(
   pcaplots+transition_time(week)+enter_fade() + exit_fade(),
   height=500, width=600, fps = 7))
@@ -394,26 +449,92 @@ stage_in_time <- cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]%>%
   filter(between(Datetime, min(pc_score$Date),max(pc_score$Date)))
 stageplot <- ggplot(stage_in_time,
                      aes(x = Datetime, y = stage_ft, color = Sitefac)) +
-    geom_line(data = stage_in_time %>% filter(Site_no == "FRE"), linewidth = 2, alpha = 0.5) +
+    # add extra line to RCS to differentiate better
+    geom_line(data = stage_in_time %>% filter(Site_no == "RCS"), linewidth = 2, alpha = 0.5) +
+    # FRE overtop line
     geom_hline(yintercept = 32, color="red4", alpha = 0.5, linetype = 2, linewidth = 1)+
     geom_line(linewidth = 1, alpha = 0.7) +
+    # label for overtop line
     annotate("text", x = unique(pc_score$Date)[4], y=33, color="red4",
              label="Fremont Weir Overtop at 32 ft")+
+    # add fill before overtop and FRE level
     geom_ribbon(data=stage_in_time %>% filter(Site_no == "FRE") %>% filter(stage_ft>=32), 
                 aes(ymin=32,ymax=stage_ft), fill="red4", alpha=0.5, outline.type="lower")+
-    scale_color_viridis_d() +
+    animCol +
     theme_bw() + labs(, y = "Stage (ft)", x = NULL, color = "Site")
 
+# animate stage plot
 stggif <- image_read(animate(
   stageplot+transition_reveal(Datetime),
   height=400, width=600, fps = 7))
 
-# combine pca and stage animations
-animation <- image_append(c(pcgif[1], stggif[1]), stack = T)
+# flow plots, animated by date (should line up with pca plots because same time frame)
+
+# get flow for tributaries in same time frame as pca
+flow_in_time <- cdec_wide %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC")) %>% 
+  filter(between(Datetime, min(pc_score$Date), max(pc_score$Date))) %>% drop_na(discharge_cfs)
+
+# flow plot raw
+(tribflowplot1 <- ggplot(flow_in_time, 
+                        aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+    geom_line() + animCol +
+    theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL))
+
+# edited flow plot
+(tribflowplot2 <- ggplot(flow_in_time, 
+                         aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+    geom_line() + animCol + animFill +
+    # text for when FRE is out of frame
+    geom_text(data = flow_in_time %>% filter(Site_no=="FRE"),
+             aes(x = as.POSIXct("2025-12-01"),
+             y = max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs),
+             label = ifelse(discharge_cfs>max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs),
+                            paste0("FRE at ", discharge_cfs), "")), show.legend = F) +
+    # fill under line
+    geom_ribbon(aes(ymin=min(discharge_cfs),ymax=discharge_cfs, fill=Site_no), 
+                alpha=0.1, outline.type="lower") +
+    # frame limits, allow FRE to break out of frame
+    coord_cartesian(ylim=c(min(flow_in_time$discharge_cfs), 
+        max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs)), clip = "off") +
+    theme_bw() + labs(title = "Tributary Flow", y = "Discharge (cfs)", x = NULL))
+
+# plotting for percent flow
+flow_in_time$Date <- as.Date(flow_in_time$Datetime)
+flow_in_time$Site_no <- factor(flow_in_time$Site_no, levels = c("RCS", "FRE", "CCY", "PTC"))
+
+# if negative flow, set to 0 (in theory, not contributing)
+flow_zero <- flow_in_time
+flow_zero[flow_zero$discharge_cfs<0, 'discharge_cfs'] <- 0
+
+# percent flow, get daily median per group then divide by sum of daily medians
+flow_perc <- flow_zero %>% group_by(Date, Site_no) %>% 
+  summarize(median_flow = median(discharge_cfs)) %>% 
+  group_by(Date) %>% 
+  mutate(sumflow = sum(median_flow), percflow = 100*median_flow/sumflow)
+
+# percent flow plot, stacked bar plot (daily increments)
+pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
+  geom_bar(stat = "identity", alpha = 0.9) + animFill +
+  labs(x = NULL, y = "Percent Flow") + theme_bw()
+
+# animate flow and percent flow plots
+flowgif <- image_read(animate(
+  tribflowplot2+transition_reveal(Datetime),
+  height=300, width=600, fps = 7))
+pflowgif <- image_read(animate(
+  pflowplot+transition_states(Date)+shadow_mark(past=T),
+  height=300, width=600, fps = 7))
+
+# combine pca and flow animations
+animation <- image_append(c(pcgif[1],flowgif[1], pflowgif[1]), stack = T)
 for(i in 2:100){
-  combined_gif <- image_append(c(pcgif[i], stggif[i]), stack = T)
+  combined_gif <- image_append(c(pcgif[i],flowgif[i], pflowgif[i]), stack = T)
   animation <- c(animation, combined_gif)
 }
 
 # save as gif
-anim_save("Output/Figures/pca_stage.gif", animation)
+anim_save("Output/Figures/pca_flow.gif", animation)
+# as mp4
+# anim_save("Output/Figures/pca_flow.mp4", animation)
+# stage plot solo
+# anim_save("Output/Figures/stage.gif", stggif)
