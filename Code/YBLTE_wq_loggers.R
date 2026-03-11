@@ -1,10 +1,7 @@
 ## YBLTE 2025-26
 ## Water quality logger data processing script
-## Eric Holmes - Kristina Nguyen - Last Edited 2/10/26
 
-# editing notes
-  # no sight of flow data for TER and I80 (exists or hidden?)
-    # flow data --> discharge and stage lvl (cdec I80(no discharge sensor), none for TER (use TOE or LIS?))
+## note - for adding new data, just need to update sites and filter good date range
 
 ## Load Libraries ----------------------------------------------------------
 
@@ -22,7 +19,7 @@ dobolookup <- read.csv("Data/tabular/YBLTE_miniDOTlookup.csv")
   # miniDOT lookup has the station, serial, and start/end (not used, easier to change in code)
 
 ## Create empty data frame to compile all dobo data
-dobodat <- data.frame()
+dobodat_raw <- data.frame()
 
 ### Loop through all DOBO folders ----
 for(folder in folders){
@@ -42,14 +39,14 @@ for(folder in folders){
     tempdat$datetime <- as.POSIXct(tempdat$time_sec, origin = "1970-01-01", tz = "")
     attr(tempdat$datetime, "tzone") <- "America/Los_Angeles"
     ##Combine individual data files
-    dobodat <- rbind(dobodat, tempdat[, c("station", "datetime", "temp_c", "do_mgl")])
+    dobodat_raw <- rbind(dobodat_raw, tempdat[, c("station", "datetime", "temp_c", "do_mgl")])
     ##Clean up workspace after each file
     rm(serial, tempdat)
   }
 }
 
 ## Create empty data frame to compile all conductivity data, different because time not guaranteed to line up
-conddat <- data.frame()
+conddat_raw <- data.frame()
 
 ## Load EC data
 ec <- list.files("Data/tabular/EC_loggers", full.names = T)
@@ -74,20 +71,42 @@ for(f in ec){
   # calculate SpC from raw conductivity and temperature
   cond_temp$spc <- cond_temp$raw_cond/(1+0.02*(cond_temp$temp-25))
   
-  conddat <- rbind(conddat, cond_temp[,c("station","datetime","spc")])
+  conddat_raw <- rbind(conddat_raw, cond_temp[,c("station","datetime","spc")])
   }
+
+# Time frame for plots
+startdate <- as.POSIXct("2025-10-01")
+enddate <- Sys.Date()
+
+## Load flow data from file then clean
+load("Data/cdec_flow_data.Rdata")
+# Focus on tributary discharge and current water year
+cdec$Param_val <- as.numeric(cdec$Param_val)
+flow <- cdec %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC")
+                        & parameterCd == 20
+                        & Datetime > startdate)
 
 ## Clean DOBO data ---------------------------------------------------------
 # Filter to current water year 
-dobodat <- dobodat[dobodat$datetime > as.POSIXct("2025-10-01"),]
-conddat <- conddat[conddat$datetime > as.POSIXct("2025-10-01"),]
+dobodat <- dobodat_raw[dobodat_raw$datetime > startdate,]
+conddat <- conddat_raw[conddat_raw$datetime > startdate,]
 
-# Drop NA
-dobodat <- drop_na(dobodat)
-conddat <- drop_na(conddat)
+# Manually selecting date ranges per sensor/station based on large jumps at beginning/end in plot
+  # setting values as NA bc ignored in plot and won't drop any values in other columns
+dobodat[dobodat$station=="SB4"&
+          dobodat$datetime>as.POSIXct("2026-01-27"),c("temp_c", "do_mgl")] <- NA
+dobodat[dobodat$station=="TER"&(dobodat$datetime<as.POSIXct("2025-11-19")|
+          dobodat$datetime>as.POSIXct("2026-01-22")),c("temp_c", "do_mgl")] <- NA
 
-# Drop bad conductivity values (guessing under 150); edit values further later (better and for other params)
-conddat <- filter(conddat, spc>150)
+dobodat[dobodat$station=="I80"&(dobodat$datetime<as.POSIXct("2025-10-30 08:57:00")|
+          dobodat$datetime>as.POSIXct("2025-12-16 12:32:00")),"do_mgl"] <- NA
+
+conddat[conddat$station=="SB4"&(conddat$datetime<as.POSIXct("2025-12-27 01:30:00")|
+          conddat$datetime>as.POSIXct("2026-01-27 22:00:00")),"spc"] <- NA
+conddat[conddat$station=="TER"&(conddat$datetime<as.POSIXct("2025-11-18 14:30:00")|
+          conddat$datetime>as.POSIXct("2026-01-24 10:30:00")),"spc"] <- NA
+conddat[conddat$station=="TEW"&
+          conddat$datetime<as.POSIXct("2025-11-04 14:30:00"), "spc"] <- NA
 
 # Get earliest dates for each station
 # dobodat %>% group_by(station)%>% summarize(mindate = min(datetime)))
@@ -111,6 +130,9 @@ conddaily <- conddat %>%
 # Reshape data frame for daily points
 dbmelt <- reshape2::melt(dobodaily, id.vars = c("station", "date"))
 cdmelt <- reshape2::melt(conddaily, id.vars = c("station", "date"))
+
+# full list of DOBO stations
+# c("TER", "TEW", "I80", "SB4", "CNW", "KNG3")
 
 # Station factors for plotting
 dbmelt$stationfac <- factor(dbmelt$station, 
@@ -166,6 +188,11 @@ ggplot(cdmelt[cdmelt$variable %in% c("minc", "meanc", "maxc"),],
        aes(x = value, y = stationfac, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) +
   scale_fill_viridis_c(option = "B", direction = 1) +
   facet_grid(. ~ variable, scales = "fixed") + theme_bw()
+
+# Plot flow of tributaries ------------------------------------------------
+flowplt <- ggplot(flow, aes(x = Datetime, y = Param_val, color = Site_no)) +
+  geom_line() + theme_bw() + xlim(startdate, enddate) +
+  labs(x = NULL, y = "Discharge (cfs)", color = "station")
 
 # Continuous ribbon smoothing ---------------------------------------------
 
@@ -228,6 +255,14 @@ for(i in unique(conddaily$station)){
 }
 
 # Continuous temp, conductivity, and DO plotting
+  # use facet wrap if too many stations is too noisy
+
+# manually scale colors to match across EC and DOBO
+  # add colors once all stations are in
+# plot_col <- scale_color_manual(c("TER" = , "TEW" = , "I80" = , 
+#                                  "SB4" = , "CNW" = , "KNG3" = ))
+# plot_fil <- scale_fill_manual(c("TER" = , "TEW" = , "I80" = , 
+#                                 "SB4" = , "CNW" = , "KNG3" = ))
 
 (tempcpan <- ggplot(dobodat, aes(x = datetime, y = meantempmod, fill = station, group = station)) +
     # scale_fill_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
@@ -235,7 +270,7 @@ for(i in unique(conddaily$station)){
     geom_ribbon(aes(ymin = mintempmod, ymax = maxtempmod), alpha = .2, linetype = 0) + 
     geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station), alpha = .4) + 
     geom_line(color = "black", linetype = 2) +
-    theme_bw() +
+    theme_bw() + xlim(startdate, enddate) +
     labs(x = NULL, y = "Temperature (C)")
     # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
   )
@@ -246,7 +281,7 @@ for(i in unique(conddaily$station)){
     geom_ribbon(aes(ymin = mindomod, ymax = maxdomod), alpha = .2, linetype = 0) + 
     geom_line(data = dobodat, aes(x = datetime, y = do_mgl, color = station), alpha = .4) + 
     geom_line(color = "black", linetype = 2) +
-    theme_bw() +
+    theme_bw() + xlim(startdate, enddate) +
     labs(x = NULL, y = "Dissolved Oxygen (mg/L)")
   # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
 )
@@ -258,7 +293,7 @@ for(i in unique(conddaily$station)){
     geom_ribbon(aes(ymin = mincmod, ymax = maxcmod), alpha = .2, linetype = 0) +
     geom_line(data = conddat, aes(x = datetime, y = spc, color = station), alpha = .4) +
     geom_line(color = "black", linetype = 2) +
-    theme_bw() +
+    theme_bw() + xlim(startdate, enddate) +
     labs(x = NULL, y = "Specific Conductivity (μS/cm)")
   # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
 )
@@ -269,7 +304,7 @@ if(saveOutput == T){png(paste("Output/Figures/YBLTE_mindots_01.png", sep = ""),
 # if(saveOutput == T){png(paste("Output/Figures/YBLTE_mindots_facet_01.png", sep = ""), 
 #                         height = 8, width = 10, unit = "in", res = 1000)}
 
-cowplot::plot_grid(domglpan, tempcpan, cpan, ncol=1)
+cowplot::plot_grid(domglpan, tempcpan, cpan, flowplt, ncol=1, align="v")
 
 if(saveOutput == T){dev.off()}
 # Calculate metrics centered around sampling events -----------------------
