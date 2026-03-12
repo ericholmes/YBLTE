@@ -49,17 +49,18 @@ for(folder in folders){
 conddat_raw <- data.frame()
 
 ## Load EC data
-ec <- list.files("Data/tabular/EC_loggers", full.names = T)
-ec <- as.list(ec[grepl(".csv", ec)])
+ec <- list.files("Data/tabular/EC_loggers", full.names = F, pattern = ".csv")
+# ec <- as.list(ec[grepl(".csv", ec)])
 for(f in ec){
-  
-  cond_temp <- read.csv(f, skip= 1, header = T)
+  print(f)
+  print(sub(".*_(.*)\\.csv", "\\1", f))
+  cond_temp <- read.csv(paste0("Data/tabular/EC_loggers/", f), skip= 1, header = T)
   cond_temp <- cond_temp[,2:4]
   colnames(cond_temp) <- c("datetime", "raw_cond", "temp")
   
   # get station from file name
-  cond_temp$station <- str_sub(f, -7, -5)
-  
+  # cond_temp$station <- str_sub(f, -7, -5)
+  cond_temp$station <- sub(".*_(.*)\\.csv", "\\1", f)
   # convert time type
   cond_temp$datetime <- as.POSIXct(cond_temp$datetime, tz="America/Los_Angeles", 
                                    format="%m/%d/%y %I:%M:%S %p")
@@ -89,7 +90,7 @@ flow <- cdec %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC")
 ## Clean DOBO data ---------------------------------------------------------
 # Filter to current water year 
 dobodat <- dobodat_raw[dobodat_raw$datetime > startdate,]
-conddat <- conddat_raw[conddat_raw$datetime > startdate,]
+conddat <- conddat_raw[conddat_raw$datetime > startdate & is.na(conddat_raw$datetime) == F,]
 
 # Manually selecting date ranges per sensor/station based on large jumps at beginning/end in plot
   # setting values as NA bc ignored in plot and won't drop any values in other columns
@@ -121,24 +122,27 @@ conddat$date <- as.Date(conddat$datetime)
 
 # Get daily min, max, mean per variable
 dobodaily <- dobodat %>% filter(temp_c < 30) %>% group_by(station, date) %>% 
-  summarize(mintemp = min(temp_c), meantemp = mean(temp_c), maxtemp = max(temp_c),
-            mindo = min(do_mgl), meando = mean(do_mgl), maxdo = max(do_mgl)) %>% data.frame()
+  summarize(mintemp = min(temp_c, na.rm = T), meantemp = mean(temp_c, na.rm = T), maxtemp = max(temp_c, na.rm = T),
+            mindo = min(do_mgl, na.rm = T), meando = mean(do_mgl, na.rm = T), maxdo = max(do_mgl, na.rm = T)) %>% 
+  data.frame()
+
 conddaily <- conddat %>% 
   group_by(station, date) %>% 
-  summarize(minc = min(spc), meanc = mean(spc), maxc = max(spc)) %>% data.frame()
+  summarize(minc = min(spc, na.rm = T), meanc = mean(spc, na.rm = T), maxc = max(spc, na.rm = T)) %>% 
+  data.frame()
 
 # Reshape data frame for daily points
 dbmelt <- reshape2::melt(dobodaily, id.vars = c("station", "date"))
 cdmelt <- reshape2::melt(conddaily, id.vars = c("station", "date"))
-
+cdmelt <- cdmelt[!is.na(cdmelt$value) & is.finite(cdmelt$value),]
 # full list of DOBO stations
 # c("TER", "TEW", "I80", "SB4", "CNW", "KNG3")
 
 # Station factors for plotting
 dbmelt$stationfac <- factor(dbmelt$station, 
-                            levels = c("TER", "SB4", "I80"))
+                            levels = c("TEW", "TER", "SB4", "I80", "KNG3"))
 cdmelt$stationfac <- factor(cdmelt$station,
-                            levels = c("TEW", "TER", "SB4", "I80"))
+                            levels = c("TEW", "TER", "SB4", "I80", "KNG3"))
 # save data for transfer
 # save(dobodat, file="minidot.Rdata")
 # save(conddat, file="eclog.Rdata")
@@ -170,7 +174,8 @@ ggplot(dobodaily, aes(x = maxdo, fill = station)) + geom_density(alpha = .2) +
   facet_wrap(station ~ .) + theme_bw()
 
 ggplot(dbmelt[dbmelt$variable %in% c("mindo", "meando", "maxdo"),], 
-       aes(x = value, y = stationfac, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) + 
+       aes(x = value, y = stationfac, fill = stat(x))) + 
+  geom_density_ridges_gradient(show.legend = F) + 
   scale_fill_viridis_c(option = "B", direction = 1) +
   facet_grid(. ~ variable, scales = "fixed") + theme_bw()
 
@@ -183,9 +188,10 @@ ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line() + the
 
 ggplot(conddaily, aes(x = maxc, fill = station)) + geom_density(alpha = .2) + 
   facet_wrap(station ~ .) + theme_bw()
+unique(cdmelt$variable)
 
-ggplot(cdmelt[cdmelt$variable %in% c("minc", "meanc", "maxc"),],
-       aes(x = value, y = stationfac, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) +
+ggplot(cdmelt, aes(x = value, y = stationfac, fill = stat(x))) + 
+  geom_density_ridges_gradient(show.legend = F) +
   scale_fill_viridis_c(option = "B", direction = 1) +
   facet_grid(. ~ variable, scales = "fixed") + theme_bw()
 
@@ -241,9 +247,9 @@ for(i in unique(conddaily$station)){
   
   # Conductivity
   
-  mincmod <- loess(minc ~ as.numeric(datetime), conddaily[conddaily$station %in% i, ], span = spanwidth)
-  maxcmod <- loess(maxc ~ as.numeric(datetime), conddaily[conddaily$station %in% i, ], span = spanwidth)
-  meancmod <- loess(meanc ~ as.numeric(datetime), conddaily[conddaily$station %in% i, ], span = spanwidth)
+  mincmod <- loess(minc ~ as.numeric(datetime), conddaily[conddaily$station %in% i & is.finite(conddaily$minc), ], span = spanwidth)
+  maxcmod <- loess(maxc ~ as.numeric(datetime), conddaily[conddaily$station %in% i & is.finite(conddaily$maxc), ], span = spanwidth)
+  meancmod <- loess(meanc ~ as.numeric(datetime), conddaily[conddaily$station %in% i & is.finite(conddaily$meanc), ], span = spanwidth)
 
   conddat$mincmod <- ifelse(conddat$station == i, predict(mincmod, conddat$datetime), conddat$mincmod)
   conddat$maxcmod <- ifelse(conddat$station == i, predict(maxcmod, conddat$datetime), conddat$maxcmod)
