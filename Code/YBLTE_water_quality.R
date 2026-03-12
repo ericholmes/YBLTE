@@ -162,10 +162,11 @@ c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "
 
 contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "Set1")[1], 
                                           "RCS" = RColorBrewer::brewer.pal(8, "Set1")[5], 
-                                          "PTC" = RColorBrewer::brewer.pal(8, "Set1")[2], 
+                                          "PTC" = RColorBrewer::brewer.pal(8, "Set1")[6], 
                                           "YBY" = RColorBrewer::brewer.pal(8, "Set1")[4],
                                           "YBT" = RColorBrewer::brewer.pal(8, "Set1")[3],
-                                          "FWD" = RColorBrewer::brewer.pal(8, "Set1")[9]))
+                                          "FRE" = RColorBrewer::brewer.pal(8, "Set1")[2],
+                                          "CCY" = RColorBrewer::brewer.pal(8, "Set1")[7]))
 
 (contspcplot <- ggplot(cdec_wide[is.na(cdec_wide$ec) == F,], aes(x = Datetime, y = ec, color = Site_no)) + 
   geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = 1) +
@@ -215,7 +216,7 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu, color = Site)))
 
-(contfdomplot <- ggplot(cdec_wide[is.na(cdec_wide$fdom) == F & cdec_wide$fdom < 60,], aes(x = Datetime, y = fdom, color = Site_no)) + 
+(contfdomplot <- ggplot(cdec_wide[is.na(cdec_wide$fdom) == F & cdec_wide$fdom < 120,], aes(x = Datetime, y = fdom, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = .8) + 
     theme_bw() +  contpal +
     labs(title = "Fluorescent Dissolved Organic Matter", y = "FDOM (QSU)", x = NULL) +
@@ -228,16 +229,16 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
   geom_line(stat = "smooth", method = "loess", span = .2, linewidth = .8) + contpal +
   theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL))
 # only LIS smoothed for flow plt 2
-(contflowplot2 <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("RCS", "YBY", "PTC") & 
-                                     is.na(cdec_wide$discharge_cfs) == F,], 
-                        aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+(contflowplot2 <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC", "FRE") & 
+                                     is.na(cdec_wide$discharge_cfs) == F,], aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+    geom_ribbon(data = cdec_wide[cdec_wide$Site_no %in% c("FRE"),],
+                aes(ymax = discharge_cfs, ymin = 0), color = "slateblue4", fill = "slateblue4", alpha = .2) +
     geom_line(alpha = .8, linewidth = .8) +
     geom_line(data = cdec_wide[cdec_wide$Site_no %in% c("LIS") & 
-                                 is.na(cdec_wide$discharge_cfs) == F,], alpha = .2) +
-    geom_line(data = cdec_wide[cdec_wide$Site_no %in% c("LIS") & 
-                                 is.na(cdec_wide$discharge_cfs) == F,],
-              stat = "smooth", method = "loess", span = .2, linewidth = .8) + contpal +
-    theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL))
+                                 is.na(cdec_wide$discharge_cfs) == F,], alpha = .2) + contpal +
+    theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL) +
+    coord_cartesian(clip = "off",
+                    ylim = c(0, max(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC"), "discharge_cfs"], na.rm = T))))
 
 (bignotchplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("FWD"),], 
                         aes(x = Datetime, y = stage_ft, color = Site_no)) + 
@@ -271,16 +272,16 @@ cdec_wide_stage$Sitefac <-  factor(cdec_wide_stage$Site_no, levels = c("KNL", "R
 png("Output/Figures/YBLTE_Cont_wq_%02d.png",
     height = 10, width = 6, units = "in", res = 1000, family = "serif")
 
-cowplot::plot_grid(tulepondplot,
-                   contflowplot,
-                   conttempplot,
-                   contdoplot,
-                   contspcplot,
-                   contchlplot,
-                   align  = "v",
-                   nrow = 6)
+# cowplot::plot_grid(tulepondplot,
+#                    contflowplot,
+#                    conttempplot,
+#                    contdoplot,
+#                    contspcplot,
+#                    contchlplot,
+#                    align  = "v",
+#                    nrow = 6)
 
-cowplot::plot_grid(stageplot + theme(axis.text.x = element_blank()),
+cowplot::plot_grid(
                    contflowplot2 + theme(axis.text.x = element_blank()),
                    conttempplot + theme(axis.text.x = element_blank()),
                    contdoplot + theme(axis.text.x = element_blank()),
@@ -288,16 +289,16 @@ cowplot::plot_grid(stageplot + theme(axis.text.x = element_blank()),
                    contfdomplot + theme(axis.text.x = element_blank()),
                    contchlplot,
                    align  = "v",
-                   nrow = 7)
-
-cowplot::plot_grid(stageplot + theme(axis.text.x = element_blank()),
-                   contflowplot2 + theme(axis.text.x = element_blank()),
-                   conttempplot + theme(axis.text.x = element_blank()),
-                   contdoplot + theme(axis.text.x = element_blank()),
-                   contspcplot + theme(axis.text.x = element_blank()),
-                   contchlplot,
-                   align  = "v",
                    nrow = 6)
+
+# cowplot::plot_grid(stageplot + theme(axis.text.x = element_blank()),
+#                    contflowplot2 + theme(axis.text.x = element_blank()),
+#                    conttempplot + theme(axis.text.x = element_blank()),
+#                    contdoplot + theme(axis.text.x = element_blank()),
+#                    contspcplot + theme(axis.text.x = element_blank()),
+#                    contchlplot,
+#                    align  = "v",
+#                    nrow = 6)
 
 dev.off()
 
