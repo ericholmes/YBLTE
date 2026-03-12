@@ -80,7 +80,7 @@ dput(unique(wqp$Site))
 
 (tempplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Temp)) + 
   geom_raster() + labs(x = "Week", y=NULL, fill = "Temp (C)") +
-    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
   theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 
 (tempbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Temp)) + 
@@ -89,7 +89,7 @@ dput(unique(wqp$Site))
 
 (doplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = DO_mgl)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "DO (mgl)") +
-    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (dobox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = DO_mgl)) + 
     geom_boxplot() + labs(x = NULL, y = "DO (mgl)") +
@@ -97,7 +97,7 @@ dput(unique(wqp$Site))
 
 (spcplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = SPC_uscm)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "SPC (uscm)") +
-    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (spcbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = SPC_uscm)) + 
     geom_boxplot() + labs(x = NULL, y = "SPC (uscm)") +
@@ -105,7 +105,7 @@ dput(unique(wqp$Site))
 
 (turbplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Turb_fnu)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Turb (FNU)") +
-    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (turbbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Turb_fnu)) + 
     geom_boxplot() + labs(x = NULL, y = "Turb (FNU)") +
@@ -113,7 +113,7 @@ dput(unique(wqp$Site))
 
 (chlplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = CHL_ugl)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Chl (ugl)") +
-    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (chlbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = CHL_ugl)) + 
     geom_boxplot() + labs(x = NULL, y = "Chl (ugl)") +
@@ -121,7 +121,7 @@ dput(unique(wqp$Site))
 
 (fdomplot <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = week, y = Sitefac, fill = fdom_qsu)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "FDOM (qsu)") +
-    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (fdombox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = fdom_qsu)) + 
     geom_boxplot() + labs(x = NULL, y = "FDOM (qsu)") +
@@ -129,7 +129,7 @@ dput(unique(wqp$Site))
 
 (zoopplot <- ggplot(wqp %>% drop_na(c(Sitefac, Zoop_score)), aes(x = week, y = Sitefac, fill = Zoop_score)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Zoop score") +
-    scale_x_continuous(limits = c(0, length(unique(wqp$week)))) +
+    scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (zoopbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Zoop_score)) + 
     geom_boxplot() + labs(x = NULL, y = "Zoop score") +
