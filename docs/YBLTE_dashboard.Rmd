@@ -92,5 +92,5 @@ PCA animation
 
 Water‑Quality PCA
 ```{r}
-knitr::include_graphics("../Output/Figures/pca_stage.gif")
+knitr::include_graphics("../Output/Figures/pca_flow.gif")
 ```

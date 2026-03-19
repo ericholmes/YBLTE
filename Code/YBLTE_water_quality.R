@@ -441,9 +441,10 @@ pcaplots <- ggplot()+
   scale_shape_manual(values = c(2:15))
 
 # animate pca plot
-pcgif <- image_read(animate(
-  pcaplots+transition_time(week)+enter_fade() + exit_fade(),
-  height=500, width=600, fps = 7))
+pcgif <- animate(
+  pcaplots + transition_time(week) + enter_fade() + exit_fade(),
+  height = 500, width = 600, fps = 10
+)
 
 # stage plots, animated by date (should line up with pca plots because same time frame)
 stage_in_time <- cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]%>% 
@@ -465,9 +466,9 @@ stageplot <- ggplot(stage_in_time,
     theme_bw() + labs(, y = "Stage (ft)", x = NULL, color = "Site")
 
 # animate stage plot
-stggif <- image_read(animate(
+stggif <- animate(
   stageplot+transition_reveal(Datetime),
-  height=400, width=600, fps = 7))
+  height=400, width=600, fps = 10)
 
 # flow plots, animated by date (should line up with pca plots because same time frame)
 
@@ -519,12 +520,12 @@ pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_n
   labs(x = NULL, y = "Percent Flow") + theme_bw()
 
 # animate flow and percent flow plots
-flowgif <- image_read(animate(
+flowgif <- animate(
   tribflowplot2+transition_reveal(Datetime),
-  height=300, width=600, fps = 7))
-pflowgif <- image_read(animate(
+  height=300, width=600, fps = 10)
+pflowgif <- animate(
   pflowplot+transition_states(Date)+shadow_mark(past=T),
-  height=300, width=600, fps = 7))
+  height=300, width=600, fps = 10)
 
 # combine pca and flow animations
 animation <- image_append(c(pcgif[1],flowgif[1], pflowgif[1]), stack = T)
@@ -536,6 +537,7 @@ for(i in 2:100){
 # save as gif
 anim_save("Output/Figures/pca_flow.gif", animation)
 # as mp4
-# anim_save("Output/Figures/pca_flow.mp4", animation)
+anim_save("Output/Figures/pca_flow.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
+
 # stage plot solo
 # anim_save("Output/Figures/stage.gif", stggif)
