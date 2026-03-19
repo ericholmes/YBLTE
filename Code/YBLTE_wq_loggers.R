@@ -296,9 +296,9 @@ for(i in unique(conddaily$station)){
 (cpan <- ggplot(conddat, aes(x = datetime, y = meancmod, fill = station, group = station)) +
     # scale_fill_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
     # scale_color_manual(values =c("TOE" = "#FFAA00", "LIB" = "#33A02C")) +
-    geom_ribbon(aes(ymin = mincmod, ymax = maxcmod), alpha = .2, linetype = 0) +
+    # geom_ribbon(aes(ymin = mincmod, ymax = maxcmod), alpha = .2, linetype = 0) +
     geom_line(data = conddat, aes(x = datetime, y = spc, color = station), alpha = .4) +
-    geom_line(color = "black", linetype = 2) +
+    # geom_line(color = "black", linetype = 2) +
     theme_bw() + xlim(startdate, enddate) +
     labs(x = NULL, y = "Specific Conductivity (μS/cm)")
   # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
