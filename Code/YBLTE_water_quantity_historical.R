@@ -4,19 +4,36 @@
 library(tidyverse)
 library(lubridate)
 ## Set variables ----
-download_data <- T
+download_data <- F
 saveplots <- T
 
 cdec_stations <- c("YBY", "LIS", "RCS", "FWD", "PTC", "FRE", "CCY", "KNL")
   
 sensor_codes <- data.frame(sensor = c("discharge_cfs", "stage_ft"), 
                            sensor_num = c(20, 1))
-startdate <- "2015-10-1"
-enddate <- Sys.Date()
+startdate <- "1997-10-1"
+enddate <- "2015-09-30"
 
 ## Load functions ----
 source("Code/YBLTE_useful_functions.R")
-
+site_no = "CCY"
+parameterCd = 20
+startDT = "1997-10-1"
+endDT = Sys.Date()
+downloadCDEChourly <- function(site_no, parameterCd, startDT, endDT){
+  temp <- read.table(paste("http://cdec.water.ca.gov/dynamicapp/req/CSVDataServlet?Stations=", site_no, "&SensorNums=",
+                           parameterCd, "&dur_code=", "H", "&Start=", startDT, "&End=", endDT, sep=""),
+                     header=FALSE, sep=",", skip=1, stringsAsFactors = F)
+  
+  temp <- temp[,c(5,7)]
+  colnames(temp) <- c("Datetime", "Param_val")
+  temp$Site_no <- site_no
+  temp$parameterCd <- parameterCd
+  temp$Datetime <- as.POSIXct(temp$Datetime, format = "%Y%m%d %H%M")
+  
+  return(temp[,c("Site_no", "Datetime", "parameterCd", "Param_val")])
+}
+# https://cdec.water.ca.gov/dynamicapp/req/CSVDataServlet?Stations=CCY&SensorNums=20&dur_code=H&Start=1997-10-1&End=2026-03-09
 ##Download gage data ----
 ### CDEC ----
 if(download_data == T){
@@ -24,19 +41,19 @@ if(download_data == T){
   for(station in cdec_stations){
     for(param in sensor_codes$sensor_num){
       print(paste("downloading:", station, param))
-      try(cdec <- rbind(cdec, downloadCDEC(site_no = station, parameterCd = param, startDT = startdate , endDT = enddate)))
+      try(cdec <- rbind(cdec, downloadCDEChourly(site_no = station, parameterCd = param, startDT = startdate , endDT = enddate)))
     }
   }
-}else(load("Data/cdec_flow_data.Rdata"))
+}else(load("Data/cdec_flow_data_hist.Rdata"))
 
-##save(cdec, file = "Data/cdec_flow_data.Rdata")
+##save(cdec, file = "Data/cdec_flow_data_hist.Rdata")
 
 lischl <- downloadCDEC(site_no = "LIS", parameterCd = 28, startDT = startdate, endDT = enddate)
 
 lisec <- downloadCDEC(site_no = "LIS", parameterCd = 100, startDT = startdate, endDT = enddate)
 
-##save(lischl, lisec, file = "Data/cdec_lis_chl+ec.Rdata")
-# load(file = "Data/cdec_lis_chl+ec.Rdata")
+##save(lischl, lisec, file = "Data/cdec_lis_chl+ec_hist.Rdata")
+# load(file = "Data/cdec_lis_chl+ec_hist.Rdata")
 lischl$Param_val <- as.numeric(lischl$Param_val)
 lisec$Param_val <- as.numeric(lisec$Param_val)
 
@@ -138,8 +155,9 @@ cdec_wide$year <- format(cdec_wide$Date, format = "%Y")
 # Loop for all years of interest ------------------------------------------
 
 if(saveplots == T){
-  for(year in 2016:2026){
+  for(year in 1998:2010){
     print(paste0("Working on year: ", year))
+    # year = 2003
     cdec_wide_temp <- cdec_wide[cdec_wide$Datetime > as.POSIXct(paste0(year - 1, "-10-01")) &  
                                   cdec_wide$Datetime < as.POSIXct(paste0(year, "-06-01")),]
     
@@ -178,7 +196,7 @@ if(saveplots == T){
                               as.Date(paste0(year, "-06-01"))),
                    date_breaks = "1 month", date_labels = "%b-%d")
     
-    png(paste0("Output/Figures/YBLTE_contflow/YBLTE_Cont_flow", year,"_%02d.png"),
+    png(paste0("Output/Figures/YBLTE_contflow_hist/YBLTE_Cont_flow_hist", year,"_%02d.png"),
         height = 10, width = 6, units = "in", res = 1000, family = "serif")
     print(cowplot::plot_grid(ybyplot, perflowplot, chlplot, ecplot, ncol = 1, align = "v"))
     dev.off()

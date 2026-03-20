@@ -358,6 +358,27 @@ png("Output/Figures/YBLTE_wq_PCA_%02d.png",
   theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() + 
   scale_shape_manual(values = c(1:14)))
 
+(pcaplot <- ggplot(data = pc_score, aes())+
+    geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
+    geom_polygon(data=conv_hull, 
+                 aes(x=PC1, y=PC2, fill=Sitefac),
+                 alpha=0.0, linewidth = NULL)+
+    geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
+                 aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
+                 alpha=0.1)+
+    geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
+                 alpha=0.5, color="black", linewidth=0.8)+
+    ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
+                              fill="dimgrey", color="white", 
+                              segment.color="dimgrey", alpha=0.8,
+                              label=rownames(pc_load_scaled), seed=25)+
+    labs(title = "Point Water Quality PCA",
+         x=paste0("PC1 (", pc1_v, "% Variance)"),
+         y=paste0("PC2 (", pc2_v, "% Variance)"),
+         color="Site", fill="Site", shape="Site")+
+    theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() + 
+    scale_shape_manual(values = c(1:14)))
+
 dev.off()
 
 # testing animation for pca
@@ -540,4 +561,13 @@ anim_save("Output/Figures/pca_flow.gif", animation)
 anim_save("Output/Figures/pca_flow.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
 
 # stage plot solo
-# anim_save("Output/Figures/stage.gif", stggif)
+
+# combine pca and flow animations horizontally
+animation_horiz <- image_append(c(pcgif[1],flowgif[1], pflowgif[1]), stack = F)
+for(i in 2:100){
+  combined_gif_horiz <- image_append(c(pcgif[i],flowgif[i], pflowgif[i]), stack = F)
+  animation_horiz <- c(animation_horiz, combined_gif_horiz)
+}
+
+# save as gif
+anim_save("Output/Figures/pca_flow_horiz.gif", animation_horiz)
