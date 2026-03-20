@@ -4,8 +4,8 @@
 library(tidyverse)
 library(lubridate)
 ## Set variables ----
-download_data <- T
-saveplots <- T
+download_data <- F
+saveplots <- F
 
 cdec_stations <- c("YBY", "LIS", "RCS", "FWD", "PTC", "FRE", "CCY", "KNL")
   
@@ -200,7 +200,9 @@ daily_flow <- cdec_wide_wy %>%
   summarize(
     daily_cfs = sum(discharge_cfs, na.rm = TRUE),
     .groups = "drop"
-  )
+  ) %>% mutate(jday = as.integer(format(Date, format = "%j")))
+
+
 
 # 3. Compute cumulative discharge within each water year
 cum_flow_wy <- daily_flow %>%
@@ -211,10 +213,71 @@ cum_flow_wy <- daily_flow %>%
   ) %>%
   ungroup()
 
+daily_leaders <- daily_flow %>%
+  group_by(Date) %>%
+  filter(daily_cfs == max(daily_cfs, na.rm = TRUE),
+         Site_no %in% c("FRE", "CCY", "RCS")) %>%
+  ungroup()
+
+leader_counts <- daily_leaders %>%
+  count(Site_no, name = "days_as_leader")
+
+leader_counts_wy <- daily_flow %>%
+  group_by(Date) %>%
+  filter(daily_cfs == max(daily_cfs, na.rm = TRUE),
+         jday %in% c(330:366, 0:150),
+         Site_no %in% c("FRE", "CCY", "RCS")) %>%
+  ungroup() %>%
+  count(wy, Site_no, name = "days_as_leader")
+
+seasonal_cumflow <- daily_flow %>%
+  filter(jday %in% c(330:366, 0:150),
+         Site_no %in% c("FRE", "CCY", "RCS")) %>%
+  group_by(wy, Site_no) %>%
+  summarize(
+    total_cum_flow = sum(daily_cfs, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+leader_flow_compare <- leader_counts_wy %>%
+  left_join(seasonal_cumflow, by = c("wy", "Site_no"))
+
+wy_type_table <- tibble(
+  wy = 2016:2026,
+  wy_type = c(
+    "Below Normal",  # 2016
+    "Wet",           # 2017
+    "Below Normal",  # 2018
+    "Wet",           # 2019
+    "Dry",           # 2020
+    "Critical",      # 2021
+    "Dry",           # 2022
+    "Wet",           # 2023
+    "Above Normal",  # 2024
+    "Above Normal",  # 2025
+    "Below Normal")  # 2026
+)
+
+leader_flow_compare <- leader_flow_compare %>%
+  left_join(wy_type_table, by = "wy")
+
+cum_flow_wy2 <- cum_flow_wy %>%
+  left_join(leader_counts_wy, by = c("Site_no", "wy"))
+
+label_df <- cum_flow_wy2 %>%
+  filter(Site_no %in% c("CCY", "FRE", "RCS")) %>%
+  group_by(wy, Site_no) %>%
+  summarize(
+    days_as_leader = first(days_as_leader),
+    x = min(Date) + 5,        # left side of facet
+    y = max(cum_cfs/1000)*0.95,  # near top of facet
+    .groups = "drop"
+  )
+
 # 4. Plot cumulative flow by water year
 if(saveplots == T){png(paste0("Output/Figures/YBLTE_contflow/YBLTE_Cumm_flow_all_years_%02d.png"),
     width = 10, height = 6, units = "in", res = 1000, family = "serif")}
-ggplot(cum_flow_wy[cum_flow_wy$Site_no %in% c("CCY", "FRE", "RCS", "PTC"),], 
+ggplot(cum_flow_wy2[cum_flow_wy2$Site_no %in% c("CCY", "FRE", "RCS", "PTC"),], 
        aes(Date, cum_cfs/1000, color = Site_no)) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ wy, scales = "free") +
@@ -224,7 +287,16 @@ ggplot(cum_flow_wy[cum_flow_wy$Site_no %in% c("CCY", "FRE", "RCS", "PTC"),],
        x = "Date",
        y = "Cumulative Discharge (1kcfs-days)",
        color = "Tributary") +
-  scale_x_date(date_breaks = "2 months", date_labels = "%b")
+  scale_x_date(date_breaks = "2 months", date_labels = "%b") +
+  # Add leader-day labels
+  geom_text_repel(
+    data = label_df, 
+    aes(x = x, y = y,
+        label = paste0(Site_no, ": ", days_as_leader, " days")),
+    color = "black",
+    size = 2.5,
+    hjust = 0
+  )
 
 ggplot(cum_flow_wy[cum_flow_wy$Site_no %in% c("CCY", "RCS", "PTC"),], 
        aes(Date, cum_cfs/1000, color = Site_no)) +
@@ -237,5 +309,24 @@ ggplot(cum_flow_wy[cum_flow_wy$Site_no %in% c("CCY", "RCS", "PTC"),],
        y = "Cumulative Discharge (1kcfs-days)",
        color = "Tributary") +
   scale_x_date(date_breaks = "2 months", date_labels = "%b")
+
+ggplot(leader_counts_wy, aes(x = Site_no, y = days_as_leader, fill = Site_no)) + 
+  geom_bar(stat = "identity") + facet_wrap(wy ~ .) + theme_bw() +
+  scale_fill_brewer(palette = "Set1")
+
+ggplot(leader_flow_compare, aes(x = Site_no, y = total_cum_flow, fill = Site_no)) + 
+  geom_bar(stat = "identity") + facet_wrap(wy ~ .) + theme_bw() +
+  scale_fill_brewer(palette = "Set1")
+
+ggplot(leader_flow_compare, aes(x = days_as_leader, y = total_cum_flow, shape = Site_no)) + 
+  geom_point() + theme_bw() + scale_y_sqrt() +
+  scale_color_brewer(palette = "Set1") + 
+  labs(title = "Cummulative flow versus days as primary tributary", 
+       x = "Days as Dominant Tributary",
+       y = "Cumulative Flow") +
+  geom_path(aes(group = wy, color = wy_type),
+    linewidth = 0.8,
+    alpha = 0.4)
+  
 
 if(saveplots == T){dev.off()}
