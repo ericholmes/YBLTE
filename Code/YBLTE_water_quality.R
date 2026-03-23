@@ -18,7 +18,7 @@ wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1",
                                            "YBLR4", "SB4", #"I80", 
                                            "AL0","LIS", "STTD", "TEW","TER"))
 
-# unique(wqp$Sitefac)
+
 wqp$week <- as.integer(format(wqp$Date, format = "%W"))
 wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
 wqp$weekchr <- as.character(wqp$week)
@@ -26,13 +26,13 @@ wqp$weekchr <- as.character(wqp$week)
 wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
 
 wqp$Zoop_score <- as.numeric(wqp$Zoop_score)
-
+dput(wqp[wqp$week == 20,])
 # wqp <- wqp[wqp$week > 0,]
 
 ##Download gage data ----
 ### CDEC ----
 
-cdec_stations <- c("YBT", "YBY", "LIS", "RCS", "FRE", "CCY", "FWD", "PTC", "KNL", "I80")
+cdec_stations <- c("YBT", "YBY", "LIS", "RCS", "FRE", "CCY", "FWD", "FWU", "PTC", "KNL", "KLG", "I80")
 
 # sensor is param name, sensor_num is for access
 sensor_codes <- data.frame(sensor = c("chla", "ec", "discharge_cfs", "fdom", 
@@ -255,12 +255,12 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
     # scale_color_brewer(palette = "Set1") +
     theme_bw() + labs(title = "Tule Pond Stage", y = "Stage (ft)", x = NULL))
 
-cdec_wide_stage <- cdec_wide[cdec_wide$Site_no %in% c("KNL", "RCS", "FRE", "YBT", "YBY", "I80", "LIS") &
+cdec_wide_stage <- cdec_wide[cdec_wide$Site_no %in% c("KNL", "RCS", "FRE", "YBT", "YBY", "I80", "LIS", "KLG", "FRE") &
                                cdec_wide$stage_ft < 60 & 
                                !(cdec_wide$stage_ft > 20 & cdec_wide$Site_no == "LIS") &
                                !(cdec_wide$stage_ft < 10 & cdec_wide$Site_no == "YBT"),]
-
-cdec_wide_stage$Sitefac <-  factor(cdec_wide_stage$Site_no, levels = c("KNL", "RCS", "FRE", "YBT", "YBY", "I80", "LIS"))
+unique(cdec_wide_stage$Site_no)
+cdec_wide_stage$Sitefac <-  factor(cdec_wide_stage$Site_no, levels = c("KNL", "KLG", "RCS", "FRE", "YBT", "YBY", "I80", "LIS"))
 
 (stageplot <- ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
                      aes(x = Datetime, y = stage_ft, color = Sitefac)) + 
@@ -272,15 +272,6 @@ cdec_wide_stage$Sitefac <-  factor(cdec_wide_stage$Site_no, levels = c("KNL", "R
 png("Output/Figures/YBLTE_Cont_wq_%02d.png",
     height = 10, width = 6, units = "in", res = 1000, family = "serif")
 
-# cowplot::plot_grid(tulepondplot,
-#                    contflowplot,
-#                    conttempplot,
-#                    contdoplot,
-#                    contspcplot,
-#                    contchlplot,
-#                    align  = "v",
-#                    nrow = 6)
-
 cowplot::plot_grid(
                    contflowplot2 + theme(axis.text.x = element_blank()),
                    conttempplot + theme(axis.text.x = element_blank()),
@@ -291,17 +282,82 @@ cowplot::plot_grid(
                    align  = "v",
                    nrow = 6)
 
-# cowplot::plot_grid(stageplot + theme(axis.text.x = element_blank()),
-#                    contflowplot2 + theme(axis.text.x = element_blank()),
-#                    conttempplot + theme(axis.text.x = element_blank()),
-#                    contdoplot + theme(axis.text.x = element_blank()),
-#                    contspcplot + theme(axis.text.x = element_blank()),
-#                    contchlplot,
-#                    align  = "v",
-#                    nrow = 6)
-
 dev.off()
 
+stage_wide <- cdec_wide_stage  %>% 
+  filter(Site_no %in% c("KLG", "KNL", "FRE")) %>% 
+  select(Datetime, Site_no, stage_ft) %>% 
+  pivot_wider(
+    names_from = Site_no,
+    values_from = stage_ft
+  ) %>% 
+  arrange(Datetime)
+
+stage_wide <- stage_wide  %>% 
+  mutate(above =  KLG > 26,   # TRUE when KLG > KNL
+    ymin  = pmin(KLG, 26),
+    ymax  = pmax(KLG, 26),
+    above32 = FRE > 32,
+    yminfre = pmin(FRE, 32),
+    ymaxfre = pmax(FRE, 32)
+  )
+
+stage_wide$above32col <- ifelse(stage_wide$above32, "Overtop", "Below32")
+stage_wide$above <- ifelse(stage_wide$above, "Flowing", "Below")
+
+png("Output/Figures/YBLTE_Stage_plot_%02d.png",
+    height = 6, width = 8, units = "in", res = 1000, family = "serif")
+
+print(stageplot)
+
+ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
+                     aes(x = Datetime)) + 
+    geom_ribbon(data = stage_wide,
+              aes(ymin = yminfre, ymax = ymaxfre, fill = above32),
+              alpha = 0.35, show.legend = F) +
+  geom_ribbon(data = stage_wide,
+    aes(ymin = ymin, ymax = ymax, fill = above),
+    alpha = 0.35, show.legend = F) +
+    theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL) +
+  geom_line(alpha = 0, aes(y = stage_ft, color = Sitefac)) +  
+    geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("KLG", "KNL", "LIS"), ], linewidth = 1, 
+              aes(y = stage_ft, color = Sitefac)) +
+    geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no == "KNL" & is.na(cdec_wide_stage$Site_no) == F, ], 
+              aes(y = stage_ft, color = Sitefac), linewidth = 3, alpha = .5) +
+    scale_color_viridis_d() + 
+  
+  scale_fill_manual(values = c("white", "white","black", "blue"))
+
+ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
+       aes(x = Datetime)) + 
+  geom_line(alpha = 0, aes(y = stage_ft, color = Sitefac)) +  
+  geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("FRE", "YBT", "LIS"), ], linewidth = 1, 
+            aes(y = stage_ft, color = Sitefac)) +
+  scale_color_viridis_d() + 
+  geom_ribbon(data = stage_wide,
+              aes(ymin = yminfre, ymax = ymaxfre, fill = above32),
+              alpha = 0.35, show.legend = F) +
+  geom_hline(yintercept = 32, color = "navy") +
+  theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL) + 
+  scale_fill_manual(values = c("white", "blue"))
+
+ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
+                     aes(x = Datetime, y = stage_ft, color = Sitefac)) + 
+    geom_line(alpha = 0) +  
+    geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("YBT", "YBY"), ], linewidth = 1) +
+    # geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no == "KNL" & is.na(cdec_wide_stage$Site_no) == F, ], linewidth = 3, alpha = .5) +
+    scale_color_viridis_d() + 
+    theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL)
+
+ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
+       aes(x = Datetime, y = stage_ft, color = Sitefac)) + 
+  geom_line(alpha = 0) +  
+  geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("I80", "LIS"), ], linewidth = 1) +
+  # geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no == "KNL" & is.na(cdec_wide_stage$Site_no) == F, ], linewidth = 3, alpha = .5) +
+  scale_color_viridis_d() + 
+  theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL)
+
+dev.off()
 # PCA for point wq ---
 
 # filter var of interest; temp too variable (discrete data),
