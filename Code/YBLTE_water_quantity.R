@@ -260,6 +260,8 @@ wy_type_table <- tibble(
 
 leader_flow_compare <- leader_flow_compare %>%
   left_join(wy_type_table, by = "wy")
+dput(unique(leader_flow_compare$wy_type))
+leader_flow_compare$wy_type <- factor(leader_flow_compare$wy_type, levels = c("Wet", "Above Normal", "Below Normal", "Dry", "Critical"))
 
 cum_flow_wy2 <- cum_flow_wy %>%
   left_join(leader_counts_wy, by = c("Site_no", "wy"))
@@ -321,9 +323,11 @@ ggplot(leader_flow_compare, aes(x = Site_no, y = total_cum_flow, fill = Site_no)
 ggplot(leader_flow_compare, aes(x = days_as_leader, y = total_cum_flow, shape = Site_no)) + 
   geom_point() + theme_bw() + scale_y_sqrt() +
   scale_color_brewer(palette = "Set1") + 
+  geom_text_repel(data = leader_flow_compare[leader_flow_compare$Site_no == "RCS",], 
+                  aes(label = wy, color = wy_type), show.legend = F) +
   labs(title = "Cummulative flow versus days as primary tributary", 
        x = "Days as Dominant Tributary",
-       y = "Cumulative Flow") +
+       y = "Cumulative Flow (cfs sq. root transformed)") +
   geom_path(aes(group = wy, color = wy_type),
     linewidth = 0.8,
     alpha = 0.4)

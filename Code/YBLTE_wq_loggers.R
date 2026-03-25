@@ -76,7 +76,7 @@ for(f in ec){
   }
 
 # Time frame for plots
-startdate <- as.POSIXct("2025-10-01")
+startdate <- as.POSIXct("2025-11-01")
 enddate <- Sys.Date()
 
 ## Load flow data from file then clean
@@ -304,13 +304,18 @@ for(i in unique(conddaily$station)){
   # +facet_wrap(station ~ ., scales = "fixed") + theme(legend.position = "none")
 )
 
+
+
 # Combine plots and save
 if(saveOutput == T){png(paste("Output/Figures/YBLTE_mindots_01.png", sep = ""), 
                         height = 8, width = 8, unit = "in", res = 1000)}
 # if(saveOutput == T){png(paste("Output/Figures/YBLTE_mindots_facet_01.png", sep = ""), 
 #                         height = 8, width = 10, unit = "in", res = 1000)}
 
-cowplot::plot_grid(domglpan, tempcpan, cpan, flowplt, ncol=1, align="v")
+cowplot::plot_grid(domglpan + theme(axis.text.x = element_blank()), 
+                   tempcpan + theme(axis.text.x = element_blank()), 
+                   cpan + theme(axis.text.x = element_blank()), 
+                   flowplt, ncol=1, align="v")
 
 if(saveOutput == T){dev.off()}
 # Calculate metrics centered around sampling events -----------------------

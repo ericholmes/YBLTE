@@ -498,6 +498,9 @@ pcaplots <- ggplot()+
   # background points
   geom_point(data=pc_score%>% subset(select=-c(week)), aes(x=PC1, y=PC2, 
       color=Sitefac, shape=Sitefac), alpha=0.4)+
+  geom_path(data=pc_score[pc_score$Sitefac %in% "STTD",] %>% 
+               subset(select=-c(week)), 
+             aes(x=PC1, y=PC2, color=Sitefac), alpha=0.4, linewidth= 1.2)+
   # variable labels
   ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
                             fill="dimgrey", color="white",
@@ -619,11 +622,35 @@ anim_save("Output/Figures/pca_flow.mp4", animation, renderer = ffmpeg_renderer(c
 # stage plot solo
 
 # combine pca and flow animations horizontally
-animation_horiz <- image_append(c(pcgif[1],flowgif[1], pflowgif[1]), stack = F)
-for(i in 2:100){
-  combined_gif_horiz <- image_append(c(pcgif[i],flowgif[i], pflowgif[i]), stack = F)
-  animation_horiz <- c(animation_horiz, combined_gif_horiz)
+nframes <- length(pcgif)
+
+# Get target dimensions from pcgif
+pc_width  <- image_info(pcgif[1])$width
+pc_height <- image_info(pcgif[1])$height
+
+# Each right-hand panel should be half the height of pcgif
+half_height <- pc_height / 2
+
+# First frame
+flow_resized  <- image_resize(flowgif[1],  paste0(pc_width, "x", half_height, "!"))
+pflow_resized <- image_resize(pflowgif[1], paste0(pc_width, "x", half_height, "!"))
+
+right_col <- image_append(c(flow_resized, pflow_resized), stack = TRUE)
+animation <- image_append(c(pcgif[1], right_col), stack = FALSE)
+
+# Loop through remaining frames
+for(i in 2:nframes){
+  
+  flow_resized  <- image_resize(flowgif[i],  paste0(pc_width, "x", half_height, "!"))
+  pflow_resized <- image_resize(pflowgif[i], paste0(pc_width, "x", half_height, "!"))
+  
+  right_col <- image_append(c(flow_resized, pflow_resized), stack = TRUE)
+  
+  combined <- image_append(c(pcgif[i], right_col), stack = FALSE)
+  
+  animation <- c(animation, combined)
 }
 
-# save as gif
-anim_save("Output/Figures/pca_flow_horiz.gif", animation_horiz)
+# Save
+anim_save("Output/Figures/pca_flow_horizontal2.gif", animation)
+anim_save("Output/Figures/pca_flow_horizontal2.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
