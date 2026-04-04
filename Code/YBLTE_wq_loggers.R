@@ -92,23 +92,6 @@ flow <- cdec %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC")
 dobodat <- dobodat_raw[dobodat_raw$datetime > startdate,]
 conddat <- conddat_raw[conddat_raw$datetime > startdate & is.na(conddat_raw$datetime) == F,]
 
-# Manually selecting date ranges per sensor/station based on large jumps at beginning/end in plot
-  # setting values as NA bc ignored in plot and won't drop any values in other columns
-dobodat[dobodat$station=="SB4"&
-          dobodat$datetime>as.POSIXct("2026-01-27"),c("temp_c", "do_mgl")] <- NA
-dobodat[dobodat$station=="TER"&(dobodat$datetime<as.POSIXct("2025-11-19")|
-          dobodat$datetime>as.POSIXct("2026-01-22")),c("temp_c", "do_mgl")] <- NA
-
-dobodat[dobodat$station=="I80"&(dobodat$datetime<as.POSIXct("2025-10-30 08:57:00")|
-          dobodat$datetime>as.POSIXct("2025-12-16 12:32:00")),"do_mgl"] <- NA
-
-conddat[conddat$station=="SB4"&(conddat$datetime<as.POSIXct("2025-12-27 01:30:00")|
-          conddat$datetime>as.POSIXct("2026-01-27 22:00:00")),"spc"] <- NA
-conddat[conddat$station=="TER"&(conddat$datetime<as.POSIXct("2025-11-18 14:30:00")|
-          conddat$datetime>as.POSIXct("2026-01-24 10:30:00")),"spc"] <- NA
-conddat[conddat$station=="TEW"&
-          conddat$datetime<as.POSIXct("2025-11-04 14:30:00"), "spc"] <- NA
-
 # Get earliest dates for each station
 # dobodat %>% group_by(station)%>% summarize(mindate = min(datetime)))
 
@@ -119,6 +102,12 @@ conddat[conddat$station=="TEW"&
 # Convert date type
 dobodat$date <- as.Date(dobodat$datetime)
 conddat$date <- as.Date(conddat$datetime)
+
+# Station factors for plotting
+dobodat$station <- factor(dobodat$station, 
+                          levels = c("KNG3", "CNW", "YBLR4", "SB4", "I80", "TEW", "TER"))
+conddat$station <- factor(conddat$station, 
+                          levels = c("KNG3", "CNW", "YBLR4", "SB4", "I80", "TEW", "TER"))
 
 # Get daily min, max, mean per variable
 dobodaily <- dobodat %>% filter(temp_c < 30) %>% group_by(station, date) %>% 
@@ -135,22 +124,47 @@ conddaily <- conddat %>%
 dbmelt <- reshape2::melt(dobodaily, id.vars = c("station", "date"))
 cdmelt <- reshape2::melt(conddaily, id.vars = c("station", "date"))
 cdmelt <- cdmelt[!is.na(cdmelt$value) & is.finite(cdmelt$value),]
-# full list of DOBO stations
-# c("TER", "TEW", "I80", "SB4", "CNW", "KNG3")
 
-# Station factors for plotting
+# Station factor for daily points (reversed to match latitude order when stacked)
 dbmelt$stationfac <- factor(dbmelt$station, 
-                            levels = c("TEW", "TER", "SB4", "I80", "KNG3"))
+                            levels = c("TER", "TEW", "I80", "SB4", "YBLR4", "CNW", "KNG3"))
 cdmelt$stationfac <- factor(cdmelt$station,
-                            levels = c("TEW", "TER", "SB4", "I80", "KNG3"))
+                            levels = c("TER", "TEW", "I80", "SB4", "YBLR4", "CNW", "KNG3"))
 # save data for transfer
 # save(dobodat, file="minidot.Rdata")
 # save(conddat, file="eclog.Rdata")
 
-## Plot DOBO+cond data ----------------------------------------------------------
+## Plot DOBO+EC data ----------------------------------------------------------
+# Read in and clean wqp data
+wqp <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
+wqp <- wqp %>% filter(Site %in% unique(dobodat$station))
+
+## Compare logger data with wqp data
+wqp_plts <- c()
+for(s in unique(dobodat$station)){
+  wqp_plts <- append(wqp_plts,ggplot() + geom_line(data = dobodat %>% filter(station == s), aes(x = datetime, y = temp_c)) +
+                   geom_point(data = wqp %>% filter(Site == s), aes(x = Date, y = Temp), color = "blue") + theme_bw() +
+                   facet_wrap(station~.))
+}
+for(s in unique(dobodat$station)){
+  wqp_plts <- append(wqp_plts,ggplot() + geom_line(data = dobodat %>% filter(station == s), aes(x = datetime, y = do_mgl)) +
+                   geom_point(data = wqp %>% filter(Site == s), aes(x = Date, y = DO_mgl), color = "blue") + theme_bw() +
+                   facet_wrap(station~.))
+}
+for(s in unique(conddat$station)){
+  wqp_plts <- append(wqp_plts,ggplot() + geom_line(data = conddat %>% filter(station == s), aes(x = datetime, y = spc)) +
+                   geom_point(data = wqp %>% filter(Site == s), aes(x = Date, y = SPC_uscm), color = "blue") + theme_bw() +
+                   facet_wrap(station~.))
+}
+cowplot::plot_grid(plotlist = wqp_plts[15:21]) # set to just get EC plots
 
 ### Temperature ----
-ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line(aes(color = station)) + theme_bw()
+ggplot() + geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station)) +
+  geom_point(data = wqp, aes(x = Date, y = Temp, color = Site)) + theme_bw()
+
+ggplot() + geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station)) +
+  geom_point(data = wqp, aes(x = Date, y = Temp, color = Site)) + theme_bw() +
+  facet_wrap(station~.)
 
 ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line() + theme_bw() + 
   facet_wrap(station~.)
@@ -159,7 +173,7 @@ ggplot(dobodaily, aes(x = maxtemp, fill = station)) + geom_density(alpha = .2) +
   facet_wrap(station ~ .) + theme_bw()
 
 ggplot(dbmelt[dbmelt$variable %in% c("mintemp", "meantemp", "maxtemp"),], 
-       aes(x = value, y = stationfac, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) + 
+       aes(x = value, y = station, fill = stat(x))) + geom_density_ridges_gradient(show.legend = F) + 
   scale_fill_viridis_c(option = "B", direction = -1) +
   facet_grid(. ~ variable, scales = "free") + theme_bw()
 
