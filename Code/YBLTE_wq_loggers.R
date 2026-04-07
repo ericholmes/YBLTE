@@ -156,7 +156,41 @@ for(s in unique(conddat$station)){
                    geom_point(data = wqp %>% filter(Site == s), aes(x = Date, y = SPC_uscm), color = "blue") + theme_bw() +
                    facet_wrap(station~.))
 }
+# Plot all logger data against corresponding wqp data
 cowplot::plot_grid(plotlist = wqp_plts[15:21]) # set to just get EC plots
+
+# Fit wqp to EC logger data to get transformation per site
+transLog <- data.frame(Site = character(), spc = numeric(), Date = Date())
+for(s in unique(conddat$station)){
+  # Filter for station
+  siteWQP <- wqp %>% filter(Site == s)
+  siteEC <- conddat %>% filter(station == s)
+  # Fit logger data to point wq, get medians for each day
+  ec_temp <- siteEC %>% group_by(date) %>% 
+    summarize(spc = median(spc, na.rm = T))
+  # Convert date type
+  ec_temp$date <- as.POSIXct(ec_temp$date)
+  # Merge wqp and logger data so points match for model
+  temp <- merge(siteWQP, ec_temp, by.x = "Date", by.y = "date")
+  # Fit logger data to wqp
+  sitemodel <- lm(temp$spc~temp$SPC_uscm)
+  # Transform logger values with model coefficients
+  c <- sitemodel$coefficients
+  trans <- data.frame(date = siteEC$datetime, spc = (siteEC$spc/c[2])-c[1]*c[2])
+  trans$Site <- s
+  # Add new values to data frame
+  transLog <- rbind(transLog, trans)
+}
+
+# Plot logger, wqp, and transformed data (just EC plots)
+trans_plts <- c()
+for(s in unique(conddat$station)){
+  trans_plts <- append(trans_plts, ggplot() + geom_line(data = conddat %>% filter(station == s), aes(x = datetime, y = spc)) +
+                       geom_point(data = wqp %>% filter(Site == s), aes(x = Date, y = SPC_uscm), color = "blue") + 
+                       geom_line(data = transLog %>% filter(Site == s), aes(x = date, y = spc), color = "red") + theme_bw() +
+                       facet_wrap(station~.))
+}
+cowplot::plot_grid(plotlist = trans_plts)
 
 ### Temperature ----
 ggplot() + geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station)) +
