@@ -3,13 +3,15 @@ library(sf)
 library(leaflet)
 library(leaflet.extras)
 library(tidyverse)
-library(ggsflabel)
+# library(ggsflabel)
 library(deltamapr)
 library(basemaps)
 library(nhdplusTools)
 library(ggrepel)
 library(ggspatial)
 library(readxl)
+library(CropScapeR)
+library(raster)
 
 API = F        # Should spatial data be download from APIs? If F will use cached data.
 savecache = F  # Overwrite downloaded spatial data
@@ -50,14 +52,31 @@ if(API){
   ), crs = 4326)
   
   # Convert bbox to sf polygon
-  sac_poly <- st_as_sfc(sac_bbox)
+  sac_poly <- sf::st_as_sfc(sac_bbox)
+  
+  # Load wetland data (CARI), crop to bounding box (needed to change CRS)
+  cari <- st_crop(st_transform(H_CARI_wetlands, crs = 4326), sac_bbox)
+  # Reorganize labels to group managed wetlands
+  cari <- cari[!grepl("Channel", cari$leglabellevel1),] # Drop channels (redundant with NHD)
+  cari$label <- cari$leglabellevel1
+  levels(cari$label) <- c(levels(cari$label), "Managed? Wetlands")
+  cari[!cari$label %in% c("Tidal Flat and Marsh Panne", "Tidal Marsh", "Vernal Pool"),"label"] <- "Managed? Wetlands"
   
   
+  # Download agriculture data (CropLand/CDL)
+    # DWR wifi will not work (you can use guest wifi)
+  cdl_raw <- GetCDLData(aoi = c(-122.2, 38.0, -121.0, 39.3), year = "2024", type = "b", 
+                    crs = "+init=epsg:4326", format = "sf")
+  # Filter for rice only
+  cdl <- cdl_raw %>% filter(value==3)
+  # Merge key for crop identifier
+  cdl <- left_join(cdl, linkdata, by = c("value" = "MasterCat"))
+
   # Download NHDPlus flowlines within the bbox
   flowlines <- get_nhdplus(
     sac_poly,
     realization = "flowline",
-    streamorder = 3,        # only larger streams (adjust as needed)
+    streamorder = 1,        # only larger streams (adjust as needed)
     t_srs = 4326
   )
 
@@ -179,28 +198,32 @@ WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 
 if(saveoutput == T){tiff("Output/Maps/Yolo_restoration_projects_scale%02da.tif",
                                  height = 6, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")}
+wetland_colors <- c("#99D8C9", "#66C2A4", "#2CA25F", "#006D2C")
 
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'a'), color = NA) +
-  geom_sf(data = WW_Watershed_wgs84, fill = "slateblue3", color = "slateblue3") +
-  geom_sf(data = rivers_major, color = "slateblue3") +
-  geom_sf(data = yolo_rest_polys[yolo_rest_polys$HRL == F, ], color = "white", aes(fill = 'b')) + 
-  geom_sf(data = yolo_rest_polys[yolo_rest_polys$HRL == T, ], color = "brown", aes(fill = 'c')) + 
-  scale_fill_manual(values = c('a' = alpha('wheat2', 0.7), 'b' = alpha('forestgreen', 0.7), 'c' = alpha('orange', 0.7)), 
-                    labels = c("Yolo Bypass", "non-HRL Project Area", 'HRL Project'), name = NULL) +
+  scale_fill_manual(values = c('a' = alpha('royalblue', 0.5)), 
+                    labels = c("Yolo Bypass"), name = NULL) +
+  ggnewscale::new_scale_fill() + 
+  geom_sf(data = cari, aes(fill = label, color = label), alpha = 0.8) +
+  scale_fill_manual(values = wetland_colors, name = NULL) + scale_color_manual(values = wetland_colors, name = NULL) +
+  ggnewscale::new_scale_color() + geom_sf(data = cdl, aes(color = "b")) + 
+  scale_color_manual(values = c('b' = 'wheat2'), labels = c("Rice Fields"), name = NULL) +
+  geom_sf(data = WW_Watershed_wgs84, fill = "royalblue", color = "royalblue") +
+  geom_sf(data = rivers_major, color = "royalblue") +
   geom_sf(data = roads_filtered, color = "grey60") +
   ggnewscale::new_scale_fill() + theme_bw() +
   geom_sf(data = proj_pts, aes(shape = Sitetype, fill = Sitetype), size = 4, linewidth = 2) +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
   geom_text_repel(aes(x = -121.89, y = 38.511, label = "Putah Creek"), 
-             data = NULL, color = "slateblue3", size = 3, fontface = "bold",
+             data = NULL, color = "blue4", size = 3, fontface = "bold",
              bg.color = "white", bg.r = 0.1) +
   geom_text_repel(aes(x = -121.79, y = 38.825, label = "Sacramento\nRiver"), 
-                   data = NULL, color = "slateblue3", size = 3, fontface = "bold",
+                   data = NULL, color = "blue4", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, force = 0) +
   geom_text_repel(aes(x = -121.595, y = 38.825, label = "Feather\nRiver"), 
-                   data = NULL, color = "slateblue3", size = 3, fontface = "bold",
+                   data = NULL, color = "blue4", size = 3, fontface = "bold",
                    bg.color = "white", bg.r = 0.1, force = 0) +
   geom_text_repel(data = proj_pts, aes(geometry = geometry, label = Site_id), 
                    stat = "sf_coordinates", size = 3, bg.color = alpha("white", 0.6),
@@ -211,9 +234,8 @@ ggplot() +
                          style = north_arrow_fancy_orienteering(),
                          height = unit(0.3,"in"), width = unit(0.3,"in"),
                          pad_x = unit(0.06, "in"), pad_y = unit(0.25, "in")) + 
-  labs(title = "Map of Yolo Bypass Restoration Projects",
+  labs(title = "Map of Yolo Bypass Lower Trophic Expansion Sites",
        x = NULL, y = NULL, shape = "Site Type", fill = "Site Type", label = "")
 
 if(saveoutput == T){dev.off()}
-
 
