@@ -10,7 +10,7 @@ cimis$date <- as.Date(cimis$date, format = "%m/%d/%Y")
 
 # Filter to 2026 water year ----
 cimis_wy <- cimis %>%
-  filter(date >= as.Date("2025-10-01"))
+  filter(date >= as.Date("1999-10-01") & date <= as.Date("2000-06-01"))
 
 # Select variables + tule fog classifier ----
 cimis_wy <- cimis_wy %>%
@@ -47,7 +47,7 @@ cimis_long <- cimis_wy %>%
 
 # Plot with fog shading ----
 
-png(paste0("Output/Figures/YBLTE_CIMIS_2026_%02d.png"),
+png(paste0("Output/Figures/YBLTE_CIMIS_2000_%02d.png"),
     width = 6.5, height = 6, units = "in", res = 1000, family = "serif")
 
 ggplot() +
@@ -60,13 +60,13 @@ ggplot() +
   geom_line(data = subset(cimis_long, Variable != "Precip. (in)"),
     aes(x = date, y = Value),
     color = "black", linewidth = 0.6) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b-%y") +
   facet_grid(Variable ~ ., scales = "free_y") +
-  scale_x_date(date_labels = "%b-1", breaks = "1 month") +
   theme_bw(base_size = 13) +
   theme(strip.text = element_text(size = 11),
     axis.title.y = element_blank(),
     panel.grid.minor = element_blank()) +
-  labs(title = "CIMIS Weather Conditions – 2026 Water Year (Davis, CA)",
+  labs(title = "CIMIS Weather Conditions – 2000 Water Year (Davis, CA)",
     x = NULL)
 
 dev.off()
