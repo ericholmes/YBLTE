@@ -10,7 +10,7 @@ source("Code/YBLTE_useful_functions.R")
 wqp <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
 
 wqp <- filter(wqp, Sample_Type=="zoop")
-dput(unique(wqp$Site))
+
 # for plotting, not listed sites were dropped (sitefac is NA)
 wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1", 
                                            "KLWW","KNG3", "CCSYB",
@@ -22,11 +22,11 @@ wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1",
 wqp$week <- as.integer(format(wqp$Date, format = "%W"))
 wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
 wqp$weekchr <- as.character(wqp$week)
-
+dput(unique(wqp[wqp$week == 21,]))
 wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
 
 wqp$Zoop_score <- as.numeric(wqp$Zoop_score)
-dput(wqp[wqp$week == 20,])
+dput(wqp[wqp$week == 23,])
 # wqp <- wqp[wqp$week > 0,]
 
 ##Download gage data ----
@@ -358,7 +358,30 @@ ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ],
   theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL)
 
 dev.off()
-# PCA for point wq ---
+
+##Quanitfying zoop inputs ----
+
+
+cowplot::plot_grid(
+  ggplot(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC", "FRE") & 
+                     is.na(cdec_wide$discharge_cfs) == F,], aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+    geom_ribbon(data = cdec_wide[cdec_wide$Site_no %in% c("FRE"),],
+                aes(ymax = discharge_cfs, ymin = 0), color = "slateblue4", fill = "slateblue4", alpha = .2) +
+    geom_line(alpha = .8, linewidth = .8) +
+    geom_line(data = cdec_wide[cdec_wide$Site_no %in% c("LIS") & 
+                                 is.na(cdec_wide$discharge_cfs) == F,], alpha = .2) + contpal +
+    theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL) +
+    coord_cartesian(clip = "off",
+                    ylim = c(0, max(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC"), "discharge_cfs"], na.rm = T)),
+                    xlim = c(as.POSIXct("2025-11-1"), as.POSIXct("2026-4-1"))) + 
+    theme(axis.text.x = element_blank()),
+  
+  ggplot(wqp[wqp$Sitefac %in% c("RD22", "STTD"),], aes(x = Date, y = Zoop_score, color = Sitefac)) + 
+    geom_point() + geom_line() + theme_bw() + xlim(c(as.POSIXct("2025-11-1"), as.POSIXct("2026-4-1"))),
+  nrow = 2, align = "v")
+
+
+# PCA for point wq ----
 
 # filter var of interest; temp too variable (discrete data),
   # sal and TDS like SPC, pc like chlorop, zoop not significant and not at every site
@@ -520,9 +543,72 @@ pcaplots <- ggplot()+
   theme_bw()+ animCol+ animFill +
   scale_shape_manual(values = c(2:15))
 
+pcaplots_lebls <- ggplot()+
+  # convex hulls for tributaries
+  geom_polygon(
+    data = conv_hull %>% filter(Sitefac %in% c("FWBN","KLWW","CCSYB")),
+    aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.3
+  ) +
+  
+  # contributing variables to PC (lines)
+  geom_segment(
+    data = pc_load_scaled,
+    aes(x = 0, y = 0, xend = PC1, yend = PC2),
+    alpha = 0.2, color = "black", linewidth = 0.8
+  ) +
+  
+  # background points
+  geom_point(
+    data = pc_score %>% subset(select = -c(week)),
+    aes(x = PC1, y = PC2, color = Sitefac, shape = Sitefac),
+    alpha = 0.4
+  ) +
+  
+  # ⭐ UPDATED: track SB4 + YBLR4 instead of STTD
+  geom_path(
+    data = pc_score[pc_score$Sitefac %in% c("SB4","YBLR4"),] %>% subset(select = -c(week)),
+    aes(x = PC1, y = PC2, color = Sitefac),
+    alpha = 0.6, linewidth = 1.4
+  ) +
+  
+  # variable labels
+  ggrepel::geom_label_repel(
+    data = pc_load_scaled,
+    aes(x = PC1, y = PC2),
+    fill = "dimgrey", color = "white",
+    segment.color = "dimgrey", alpha = 0.5,
+    label = rownames(pc_load_scaled), seed = 25
+  ) +
+  
+  # ⭐ UPDATED: highlight SB4 + YBLR4 as large points
+  geom_point(
+    data = pc_score,
+    aes(
+      x = PC1, y = PC2, color = Sitefac, shape = Sitefac,
+      size = ifelse(Sitefac %in% c("FWBN","KLWW","CCSYB","SB4","YBLR4"), 2, 1)
+    ),
+    stroke = 2, alpha = 0.7
+  ) +
+  
+  labs(
+    title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
+    x = paste0("PC1 (", pc1_v, "% Variance)"),
+    y = paste0("PC2 (", pc2_v, "% Variance)"),
+    color = "Site", shape = "Site"
+  ) +
+  guides(fill = "none", size = "none") +
+  theme_bw() + animCol + animFill +
+  scale_shape_manual(values = c(2:15))
+
+
 # animate pca plot
 pcgif <- animate(
   pcaplots + transition_time(week) + enter_fade() + exit_fade(),
+  height = 500, width = 600, fps = 10
+)
+
+pcgif_lebls <- animate(
+  pcaplots_lebls + transition_time(week) + enter_fade() + exit_fade(),
   height = 500, width = 600, fps = 10
 )
 
@@ -614,6 +700,13 @@ for(i in 2:100){
   animation <- c(animation, combined_gif)
 }
 
+animation_lebls <- image_append(c(pcgif_lebls[1],flowgif[1], pflowgif[1]), stack = T)
+for(i in 2:100){
+  combined_gif <- image_append(c(pcgif_lebls[i],flowgif[i], pflowgif[i]), stack = T)
+  animation <- c(animation, combined_gif)
+}
+
+
 # save as gif
 anim_save("Output/Figures/pca_flow.gif", animation)
 # as mp4
@@ -637,6 +730,7 @@ pflow_resized <- image_resize(pflowgif[1], paste0(pc_width, "x", half_height, "!
 
 right_col <- image_append(c(flow_resized, pflow_resized), stack = TRUE)
 animation <- image_append(c(pcgif[1], right_col), stack = FALSE)
+animation_lebls <- image_append(c(pcgif_lebls[1], right_col), stack = FALSE)
 
 # Loop through remaining frames
 for(i in 2:nframes){
@@ -651,6 +745,23 @@ for(i in 2:nframes){
   animation <- c(animation, combined)
 }
 
+# Loop through remaining frames
+for(i in 2:nframes){
+  
+  flow_resized  <- image_resize(flowgif[i],  paste0(pc_width, "x", half_height, "!"))
+  pflow_resized <- image_resize(pflowgif[i], paste0(pc_width, "x", half_height, "!"))
+  
+  right_col <- image_append(c(flow_resized, pflow_resized), stack = TRUE)
+  
+  combined <- image_append(c(pcgif_lebls[i], right_col), stack = FALSE)
+  
+  animation_lebls <- c(animation_lebls, combined)
+}
+
 # Save
 anim_save("Output/Figures/pca_flow_horizontal2.gif", animation)
 anim_save("Output/Figures/pca_flow_horizontal2.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
+
+anim_save("Output/Figures/pca_flow_horizontal2_lebls.gif", animation_lebls)
+anim_save("Output/Figures/pca_flow_horizontal2_lebls.mp4", animation_lebls, renderer = ffmpeg_renderer(codec = "libx264"))
+
