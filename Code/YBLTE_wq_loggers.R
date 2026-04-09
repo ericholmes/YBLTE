@@ -9,7 +9,7 @@ library(tidyverse)
 library(ggridges)
 
 ## Load data ---------------------------------------------------------------
-saveOutput = F
+saveOutput = T
 
 ## List folders corresponding to DOBO serial numbers
 folders <- list.files("Data/tabular/MiniDOTs")
@@ -192,13 +192,12 @@ for(s in unique(conddat$station)){
 }
 cowplot::plot_grid(plotlist = trans_plts)
 
+wqp$station <- wqp$Site
 ### Temperature ----
 ggplot() + geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station)) +
-  geom_point(data = wqp, aes(x = Date, y = Temp, color = Site)) + theme_bw()
+  geom_point(data = wqp, aes(x = Date, y = Temp, color = station)) + theme_bw()
 
-ggplot() + geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station)) +
-  geom_point(data = wqp, aes(x = Date, y = Temp, color = Site)) + theme_bw() +
-  facet_wrap(station~.)
+
 
 ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line() + theme_bw() + 
   facet_wrap(station~.)
@@ -218,6 +217,8 @@ ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line(aes(color = station))
 ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line() + theme_bw() + 
   facet_wrap(station~.)
 
+
+
 ggplot(dobodaily, aes(x = maxdo, fill = station)) + geom_density(alpha = .2) + 
   facet_wrap(station ~ .) + theme_bw()
 
@@ -226,6 +227,21 @@ ggplot(dbmelt[dbmelt$variable %in% c("mindo", "meando", "maxdo"),],
   geom_density_ridges_gradient(show.legend = F) + 
   scale_fill_viridis_c(option = "B", direction = 1) +
   facet_grid(. ~ variable, scales = "fixed") + theme_bw()
+
+if(saveOutput == T){png(paste("Output/Figures/YBLTE_Temp+DO_panels_%02d.png", sep = ""), 
+                        height = 6, width = 8, unit = "in", res = 1000)}
+
+ggplot() + geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station), alpha = .5) +
+  geom_point(data = wqp, aes(x = Date, y = Temp, color = station)) + theme_bw() + 
+  labs(x = NULL, y = "Temperature (C)") +
+  facet_wrap(station~.)
+
+ggplot() + geom_line(data = dobodat, aes(x = datetime, y = do_mgl, color = station), alpha = .5) +
+  geom_point(data = wqp, aes(x = Date, y = DO_mgl, color = station)) + theme_bw() +
+  labs(x = NULL, y = "Dissolved Oxygen (mg/L)") +
+  facet_wrap(station~.)
+
+if(saveOutput == T){dev.off()}
 
 ### Conductivity ----
 
