@@ -193,7 +193,7 @@ ggplot() +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
   
-  geom_text_repel(aes(x = -121.849, y = 38.716, label = "Cache Creek"), 
+  geom_text_repel(aes(x = -121.848, y = 38.716, label = "Cache Creek"), 
                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, angle = 33.6) +
   geom_text_repel(aes(x = -121.87, y = 38.541, label = "Putah Creek"), 
