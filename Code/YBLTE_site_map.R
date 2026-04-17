@@ -12,6 +12,7 @@ library(ggspatial)
 library(readxl)
 library(CropScapeR)
 library(raster)
+library(terra)
 
 API = F        # Should spatial data be download from APIs? If F will use cached data.
 savecache = F  # Overwrite downloaded spatial data
@@ -45,10 +46,10 @@ if(API){
   
   # Sacramento Valley bounding box (xmin, ymin, xmax, ymax)
   sac_bbox <- st_bbox(c(
-    xmin = -122.2,
-    ymin = 38.0,
-    xmax = -121.0,
-    ymax = 39.3
+    xmin = -121.9,
+    ymin = 38.15,
+    xmax = -121.4,
+    ymax = 38.85
   ), crs = 4326)
   
   # Convert bbox to sf polygon
@@ -56,27 +57,29 @@ if(API){
   
   # Load wetland data (CARI), crop to bounding box (needed to change CRS)
   cari <- st_crop(st_transform(H_CARI_wetlands, crs = 4326), sac_bbox)
-  # Reorganize labels to group managed wetlands
-  cari <- cari[!grepl("Channel", cari$leglabellevel1),] # Drop channels (redundant with NHD)
-  cari$label <- cari$leglabellevel1
-  levels(cari$label) <- c(levels(cari$label), "Managed? Wetlands")
-  cari[!cari$label %in% c("Tidal Flat and Marsh Panne", "Tidal Marsh", "Vernal Pool"),"label"] <- "Managed? Wetlands"
-  
+  # Drop channels (redundant with NHD)
+  cari <- cari[!grepl("Channel", cari$leglabellevel1),] 
   
   # Download agriculture data (CropLand/CDL)
-    # DWR wifi will not work (you can use guest wifi)
-  cdl_raw <- GetCDLData(aoi = c(-122.2, 38.0, -121.0, 39.3), year = "2024", type = "b", 
-                    crs = "+init=epsg:4326", format = "sf")
+    # DWR wifi will not work (you can use guest wifi, VPN)
+    # Was having server issues (too overwhelmed?), worked the next day
+  cdl_raw <- GetCDLData(aoi = c(-121.9, 38.15, -121.4, 38.85), year = "2024", type = "b",
+                    crs = "+init=epsg:4326")
+  
   # Filter for rice only
-  cdl <- cdl_raw %>% filter(value==3)
-  # Merge key for crop identifier
-  cdl <- left_join(cdl, linkdata, by = c("value" = "MasterCat"))
-
+  cdl <- data.table::copy(cdl_raw)
+  cdl[cdl[]!=3] = NA
+  
+  # Convert to sf (runs a long time)
+  cdl_sf <- as.polygons(rast(cdl), na.rm = T)
+  cdl_sf <- st_as_sf(cdl_sf, as_points = F)
+  cdl_sf <- cdl_sf %>% rename(crop = CDL_2024_clip_20260416112512_974840496)
+  
   # Download NHDPlus flowlines within the bbox
   flowlines <- get_nhdplus(
     sac_poly,
     realization = "flowline",
-    streamorder = 1,        # only larger streams (adjust as needed)
+    streamorder = 1,
     t_srs = 4326
   )
 
@@ -84,7 +87,8 @@ if(API){
                    "Feather River",
                    "American River",
                    "Putah Creek",
-                   "Yuba River")
+                   "Yuba River",
+                   "Cache Creek")
   
   rivers_major <- flowlines %>%
     filter(gnis_name %in% major_names)
@@ -98,7 +102,7 @@ if(API){
   # Filter roads to only those within Sacramento and Yolo Counties
   roads_filtered <- st_intersection(roads, counties_clip_boundary)
   
-  if(savecache == T){save(polygons, bypasses, rivers_major, roads_filtered, ywa_poly,
+  if(savecache == T){save(polygons, bypasses, rivers_major, roads_filtered, ywa_poly, cari, cdl_sf,
        file = "data/spatial/Yolo_map_data.Rdata")}
 
 }else{
@@ -160,71 +164,47 @@ leaflet(rest_polys) %>%
                    options = layersControlOptions(collapsed = FALSE))
 
 ## Static map ---------------------------------------------------------------
-rest_polys$project_name
-## Select Yolo Projects and create short name for labeling
-yolo_projects <- data.frame(project_name = c("Yolo Flyway Farms Tidal Habitat Restoration", 
-                                             "Lower Yolo Ranch Tidal Habitat Restoration", 
-                                             "Lower Elkhorn Basin Levee Setback Project",  
-                                             "Little Egbert Multibenefit Project", 
-                                             "Lookout Slough Tidal Habitat Restoration and Flood Improvement",  
-                                             "Tide's End Multi-benefit Project", 
-                                             "Sacramento Weir and Bypass Expansion", 
-                                             "Agricultural Road Crossing #4", 
-                                             "Big Notch Project - Yolo Bypass Salmonid Habitat Restoration and Fish Passage", 
-                                             "Big Notch Project - Supplemental Fish Passage Structure", 
-                                             "Big Notch Project - Agricultural Road Crossing #1 and Tule Channel Improvements", 
-                                             "Upper Elkhorn Basin Planning Area",
-                                             "Tule Canal Corridor Enhancement Planning",
-                                             "Fremont Weir Adult Fish Passage", "Yolo Bypass Wildlife Area"),
-                            short_name = c("Yolo Flyway Farms", 
-                                           "Lower Yolo Ranch", 
-                                           "LEBLS",  
-                                           "Little Egbert", 
-                                           "Lookout Slough",  
-                                           "Tide's End", 
-                                           "Sac. Weir Expansion", 
-                                           "Ag. Crossing #4", 
-                                           "Big Notch", 
-                                           "Supp. Fish Passage", 
-                                           "Ag. Crossing #1 + Tule Channel", 
-                                           "UEBLS",
-                                           "Tule Canal",
-                                           "AFP", "YBWA"),
-                            HRL = c(F,F,T,F,F,T,F,F,F,F,F,F,F,F,F),
-                            dir = c(-1,-1,1,-1,-1,1,1,1,1,-1,-1,1,1-1,-1,-1))
-
-yolo_rest_polys <- merge(rest_polys, yolo_projects, by = "project_name", all.y = T)
 WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 
-if(saveoutput == T){tiff("Output/Maps/Yolo_restoration_projects_scale%02da.tif",
+if(saveoutput == T){tiff("Output/Maps/YBLTE_Sites%02da.tif",
                                  height = 6, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")}
-wetland_colors <- c("#99D8C9", "#66C2A4", "#2CA25F", "#006D2C")
 
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'a'), color = NA) +
-  scale_fill_manual(values = c('a' = alpha('royalblue', 0.5)), 
+  scale_fill_manual(values = c('a' = alpha('#33599C', 0.5)), 
                     labels = c("Yolo Bypass"), name = NULL) +
   ggnewscale::new_scale_fill() + 
-  geom_sf(data = cari, aes(fill = label, color = label), alpha = 0.8) +
-  scale_fill_manual(values = wetland_colors, name = NULL) + scale_color_manual(values = wetland_colors, name = NULL) +
-  ggnewscale::new_scale_color() + geom_sf(data = cdl, aes(color = "b")) + 
-  scale_color_manual(values = c('b' = 'wheat2'), labels = c("Rice Fields"), name = NULL) +
-  geom_sf(data = WW_Watershed_wgs84, fill = "royalblue", color = "royalblue") +
-  geom_sf(data = rivers_major, color = "royalblue") +
+  
+  geom_sf(data = cari, aes(fill = 'w', color = 'w'), alpha = 0.9) +
+  scale_fill_manual(values = c('w' = "#66C2A4"), labels = c("Wetland"), name = NULL) + 
+  scale_color_manual(values = c('w' = "#66C2A4"), labels = c("Wetland"), name = NULL) +
+  ggnewscale::new_scale_color() + ggnewscale::new_scale_fill() + 
+  
+  geom_sf(data = cdl_sf, aes(fill = "b"), color = NA, alpha = 0.9) +
+  scale_fill_manual(values = c('b' = 'wheat2'), labels = c("Rice Field"), name = NULL) +
+  
+  geom_sf(data = WW_Watershed_wgs84, fill = "#33599C", color = "#33599C") +
+  geom_sf(data = rivers_major, color = "#33599C") +
+ 
   geom_sf(data = roads_filtered, color = "grey60") +
   ggnewscale::new_scale_fill() + theme_bw() +
+  
   geom_sf(data = proj_pts, aes(shape = Sitetype, fill = Sitetype), size = 4, linewidth = 2) +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
-  geom_text_repel(aes(x = -121.89, y = 38.511, label = "Putah Creek"), 
-             data = NULL, color = "blue4", size = 3, fontface = "bold",
-             bg.color = "white", bg.r = 0.1) +
-  geom_text_repel(aes(x = -121.79, y = 38.825, label = "Sacramento\nRiver"), 
-                   data = NULL, color = "blue4", size = 3, fontface = "bold",
-                  bg.color = "white", bg.r = 0.1, force = 0) +
-  geom_text_repel(aes(x = -121.595, y = 38.825, label = "Feather\nRiver"), 
-                   data = NULL, color = "blue4", size = 3, fontface = "bold",
-                   bg.color = "white", bg.r = 0.1, force = 0) +
+  
+  geom_text_repel(aes(x = -121.848, y = 38.716, label = "Cache Creek"), 
+                  data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1, angle = 33.6) +
+  geom_text_repel(aes(x = -121.87, y = 38.541, label = "Putah Creek"), 
+             data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+             bg.color = "white", bg.r = 0.1, angle = -10) +
+  geom_text_repel(aes(x = -121.731, y = 38.824, label = "Sacramento\nRiver"), 
+                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
+  geom_text_repel(aes(x = -121.63, y = 38.825, label = "Feather\nRiver"), 
+                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "left") +
   geom_text_repel(data = proj_pts, aes(geometry = geometry, label = Site_id), 
                    stat = "sf_coordinates", size = 3, bg.color = alpha("white", 0.6),
                    color = "black", bg.r = 0.1, fontface = "bold") +
