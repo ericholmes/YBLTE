@@ -5,6 +5,54 @@ library(tidyverse)
 ## Load functions ----
 source("Code/YBLTE_useful_functions.R")
 
+##Set colors
+# fix colors for animations
+animCol <-  scale_color_manual(values = c("KNL" = "#440154FF",
+                                          "RCS" = "#482878FF",
+                                          "FRE" = "#B63679FF",
+                                          "YBT" = "#3E4A89FF",
+                                          "CCY" = "#FB8861FF",
+                                          "YBY" = "#31688EFF",
+                                          "PTC" = "#FBFCA4",
+                                          "PTC" = "#A8AB7D",
+                                          "FWBN" = "#B63679FF", 
+                                          "FW1" = "#440154FF", 
+                                          "KLWW" = "#482878FF",
+                                          "KNG3" = "#453581FF", 
+                                          "CCSYB" = "#FB8861FF",
+                                          "CNW" = "#34618DFF",
+                                          "RD22" = "#2B748EFF", 
+                                          "YBLR4" = "#24878EFF", 
+                                          "SB4" = "#1F998AFF",
+                                          "I80" = "#25AC82FF", 
+                                          "AL0" = "#40BC72FF",
+                                          "LIS" = "#67CC5CFF", 
+                                          "STTD" = "#73A32F", 
+                                          "TEW" = "#CBE11EFF",
+                                          "TER" = "#FDE725FF"))
+animFill <-  scale_fill_manual(values = c("KNL" = "#440154FF",
+                                          "RCS" = "#482878FF",
+                                          "FRE" = "#B63679FF",
+                                          "YBT" = "#3E4A89FF",
+                                          "CCY" = "#FB8861FF",
+                                          "YBY" = "#31688EFF",
+                                          "PTC" = "#FBFCA4",
+                                          "FWBN" = "#B63679FF", 
+                                          "FW1" = "#440154FF", 
+                                          "KLWW" = "#482878FF",
+                                          "KNG3" = "#453581FF", 
+                                          "CCSYB" = "#FB8861FF",
+                                          "CNW" = "#34618DFF",
+                                          "RD22" = "#2B748EFF", 
+                                          "YBLR4" = "#24878EFF", 
+                                          "SB4" = "#1F998AFF",
+                                          "I80" = "#25AC82FF", 
+                                          "AL0" = "#40BC72FF",
+                                          "LIS" = "#67CC5CFF", 
+                                          "STTD" = "#73A32F", 
+                                          "TEW" = "#CBE11EFF",
+                                          "TER" = "#FDE725FF"))
+
 ## Load point wq data
 
 wqp <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
@@ -26,7 +74,7 @@ dput(unique(wqp[wqp$week == 21,]))
 wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
 
 wqp$Zoop_score <- as.numeric(wqp$Zoop_score)
-dput(wqp[wqp$week == 23,])
+dput(wqp[wqp$week == 24,])
 # wqp <- wqp[wqp$week > 0,]
 
 ##Download gage data ----
@@ -70,6 +118,8 @@ cdec_wide$stage_ft <- ifelse(cdec_wide$Site_no == "FWD",
 
 #This may be inaccurate...It looks like it is already in SPC, so maybe the formula is backwards
 cdec_wide$spc <- cdec_wide$ec / (1 + 0.02 * (cdec_wide$wtemp_c - 25))
+cdec_wide$Date <- as.Date(cdec_wide$Datetime)
+# cdec_wide <- cdec_wide[cdec_wide$ec > 50, ]
 
 ## Preliminary plotting ----
 dput(unique(wqp$Site))
@@ -169,9 +219,9 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
                                           "CCY" = RColorBrewer::brewer.pal(8, "Set1")[7]))
 
 (contspcplot <- ggplot(cdec_wide[is.na(cdec_wide$ec) == F,], aes(x = Datetime, y = ec, color = Site_no)) + 
-  geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = 1) +
-  theme_bw() +  contpal +
-    labs(title = "Conductivity", y = "EC (US/cm)", x = NULL) +
+  geom_line(alpha = .8) + #geom_line(stat = "smooth", method = "loess", span = .1, linewidth = 1) +
+  theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+    labs(y = "EC (US/cm)", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm, color = Site)))
 
@@ -181,71 +231,88 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
 #   geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm, color = Site))
 
 (contdoplot <- ggplot(cdec_wide[is.na(cdec_wide$domgl) == F,], aes(x = Datetime, y = domgl, color = Site_no)) + 
-    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = 1) + 
-    theme_bw() +  contpal +
-    labs(title = "Dissolved Oxygen", y = "DO (mg/L)", x = NULL) +
+    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = 1) + 
+    theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+    labs(y = "DO (mg/L)", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = DO_mgl), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = DO_mgl, color = Site)))
 
 (conttempplot <- ggplot(cdec_wide[is.na(cdec_wide$wtemp_c) == F & cdec_wide$wtemp_c < 50, ], aes(x = Datetime, y = wtemp_c, color = Site_no)) + 
-    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = .8) + 
-    theme_bw() +  contpal +
-    labs(title = "Water temperature", y = "Temperature (C)", x = NULL) +
+    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
+    theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+    labs(y = "Temperature (C)", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Temp), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Temp, color = Site)))
 
 (contchlplot <- ggplot(cdec_wide[is.na(cdec_wide$chla) == F & cdec_wide$chla < 60,], aes(x = Datetime, y = chla, color = Site_no)) + 
-    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = .8) + 
-    theme_bw() +  contpal +
-    labs(title = "Chlorophyll-a", y = "Chl-a (ug/L)", x = NULL) +
+    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
+    theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+    labs(y = "Chl-a (ug/L)", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = CHL_ugl), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = CHL_ugl, color = Site)))
 
 # new plots ---
 (contphplot <- ggplot(cdec_wide[is.na(cdec_wide$ph) == F & cdec_wide$ph < 60,], aes(x = Datetime, y = ph, color = Site_no)) + 
-    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = .8) + 
-    theme_bw() +  contpal +
-    labs(title = "pH", y = "pH", x = NULL) +
+    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
+    theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+    labs(y = "pH", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = pH), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = pH, color = Site)))
 
-(contturbplot <- ggplot(cdec_wide[is.na(cdec_wide$turb_fnu) == F & cdec_wide$turb_fnu < 60,], aes(x = Datetime, y = turb_fnu, color = Site_no)) + 
-    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = .8) + 
-    theme_bw() +  contpal +
-    labs(title = "Turbidity", y = "Turb (FNU)", x = NULL) +
+(contturbplot <- ggplot(cdec_wide[is.na(cdec_wide$turb_fnu) == F & cdec_wide$turb_fnu < 80,], aes(x = Datetime, y = turb_fnu, color = Site_no)) + 
+    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
+    theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+    labs(y = "Turb (FNU)", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu, color = Site)))
 
 (contfdomplot <- ggplot(cdec_wide[is.na(cdec_wide$fdom) == F & cdec_wide$fdom < 120,], aes(x = Datetime, y = fdom, color = Site_no)) + 
-    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = .8) + 
-    theme_bw() +  contpal +
-    labs(title = "Fluorescent Dissolved Organic Matter", y = "FDOM (QSU)", x = NULL) +
+    geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
+    theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+    labs(y = "FDOM (QSU)", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu, color = Site)))
 
 (contflowplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("LIS", "RCS", "YBY", "PTC") & is.na(cdec_wide$discharge_cfs) == F,], 
                         aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
-  geom_line(alpha = .2) +
+  geom_line(alpha = .2) + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
   geom_line(stat = "smooth", method = "loess", span = .2, linewidth = .8) + contpal +
-  theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL))
+  theme_bw() + labs(y = "Discharge (cfs)", x = NULL))
 # only LIS smoothed for flow plt 2
+
 (contflowplot2 <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC", "FRE") & 
                                      is.na(cdec_wide$discharge_cfs) == F,], aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
     geom_ribbon(data = cdec_wide[cdec_wide$Site_no %in% c("FRE"),],
                 aes(ymax = discharge_cfs, ymin = 0), color = "slateblue4", fill = "slateblue4", alpha = .2) +
-    geom_line(alpha = .8, linewidth = .8) +
+    geom_line(alpha = .8, linewidth = .8) + scale_x_date(date_breaks = "1 month", date_labels = "%b-1") +
     geom_line(data = cdec_wide[cdec_wide$Site_no %in% c("LIS") & 
-                                 is.na(cdec_wide$discharge_cfs) == F,], alpha = .2) + contpal +
-    theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL) +
+                                 is.na(cdec_wide$discharge_cfs) == F,], alpha = .2) + animCol +
+    theme_bw() + labs(y = "Discharge (cfs)", x = NULL) +
     coord_cartesian(clip = "off",
                     ylim = c(0, max(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC"), "discharge_cfs"], na.rm = T))))
+##Percent flow
+flow_in_time <- cdec_wide %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC")) %>%drop_na(discharge_cfs)
 
-(bignotchplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("FWD"),], 
-                        aes(x = Datetime, y = stage_ft, color = Site_no)) + 
+flow_zero <- flow_in_time
+flow_zero[flow_zero$discharge_cfs<0, 'discharge_cfs'] <- 0
+
+flow_perc <- flow_zero %>% group_by(Date, Site_no) %>% 
+  summarize(median_flow = median(discharge_cfs)) %>% 
+  group_by(Date) %>% 
+  mutate(sumflow = sum(median_flow), percflow = 100*median_flow/sumflow)
+
+# percent flow plot, stacked bar plot (daily increments)
+(contpercflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
+  geom_bar(stat = "identity", alpha = 0.9, width = 1) + animFill +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b-1") +
+  labs(x = NULL, y = "Percent Flow") + theme_bw())
+
+(bignotchplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("FWB"),], 
+                        aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
     geom_line(color = "Navy", linewidth = 1) +
     # geom_line(stat = "smooth", method = "loess", span = .2, linewidth = 1) + 
     # scale_color_brewer(palette = "Set1") +
-    theme_bw() + labs(title = "Big notch downstream stage", y = "Stage (ft)", x = NULL))
+    theme_bw() + labs(y = "Stage (ft)", x = NULL))
 
 (tulepondplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("YBT") & 
                                     cdec_wide$stage_ft > 12 &cdec_wide$stage_ft < 60,], 
@@ -274,13 +341,14 @@ png("Output/Figures/YBLTE_Cont_wq_%02d.png",
 
 cowplot::plot_grid(
                    contflowplot2 + theme(axis.text.x = element_blank()),
+                   contpercflowplot + theme(axis.text.x = element_blank()),
                    conttempplot + theme(axis.text.x = element_blank()),
                    contdoplot + theme(axis.text.x = element_blank()),
                    contspcplot + theme(axis.text.x = element_blank()),
                    contfdomplot + theme(axis.text.x = element_blank()),
                    contchlplot,
                    align  = "v",
-                   nrow = 6)
+                   nrow = 7)
 
 dev.off()
 
@@ -463,52 +531,6 @@ dev.off()
 # testing animation for pca
 library(gganimate)
 library(magick)
-
-# fix colors for animations
-animCol <-  scale_color_manual(values = c("KNL" = "#440154FF",
-                                          "RCS" = "#482878FF",
-                                          "FRE" = "#B63679FF",
-                                          "YBT" = "#3E4A89FF",
-                                          "CCY" = "#FB8861FF",
-                                          "YBY" = "#31688EFF",
-                                          "PTC" = "#A8AB7D",
-                                          "FWBN" = "#B63679FF", 
-                                          "FW1" = "#440154FF", 
-                                          "KLWW" = "#482878FF",
-                                          "KNG3" = "#453581FF", 
-                                          "CCSYB" = "#FB8861FF",
-                                          "CNW" = "#34618DFF",
-                                          "RD22" = "#2B748EFF", 
-                                          "YBLR4" = "#24878EFF", 
-                                          "SB4" = "#1F998AFF",
-                                          "I80" = "#25AC82FF", 
-                                          "AL0" = "#40BC72FF",
-                                          "LIS" = "#67CC5CFF", 
-                                          "STTD" = "#73A32F", 
-                                          "TEW" = "#CBE11EFF",
-                                          "TER" = "#FDE725FF"))
-animFill <-  scale_fill_manual(values = c("KNL" = "#440154FF",
-                                          "RCS" = "#482878FF",
-                                          "FRE" = "#B63679FF",
-                                          "YBT" = "#3E4A89FF",
-                                          "CCY" = "#FB8861FF",
-                                          "YBY" = "#31688EFF",
-                                          "PTC" = "#FBFCA4",
-                                          "FWBN" = "#B63679FF", 
-                                          "FW1" = "#440154FF", 
-                                          "KLWW" = "#482878FF",
-                                          "KNG3" = "#453581FF", 
-                                          "CCSYB" = "#FB8861FF",
-                                          "CNW" = "#34618DFF",
-                                          "RD22" = "#2B748EFF", 
-                                          "YBLR4" = "#24878EFF", 
-                                          "SB4" = "#1F998AFF",
-                                          "I80" = "#25AC82FF", 
-                                          "AL0" = "#40BC72FF",
-                                          "LIS" = "#67CC5CFF", 
-                                          "STTD" = "#73A32F", 
-                                          "TEW" = "#CBE11EFF",
-                                          "TER" = "#FDE725FF"))
 
 # pca plots, animated by week (starts at 2 where no missing data)
 pcaplots <- ggplot()+
