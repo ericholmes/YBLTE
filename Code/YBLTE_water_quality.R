@@ -70,11 +70,11 @@ wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1",
 wqp$week <- as.integer(format(wqp$Date, format = "%W"))
 wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
 wqp$weekchr <- as.character(wqp$week)
-dput(unique(wqp[wqp$week == 21,]))
 wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
 
 wqp$Zoop_score <- as.numeric(wqp$Zoop_score)
-dput(wqp[wqp$week == 24,])
+dput(wqp[wqp$week == 26,])
+dput(wqp[wqp$week == 26 & wqp$Sample_Type == "wq",])
 # wqp <- wqp[wqp$week > 0,]
 
 ##Download gage data ----
@@ -284,7 +284,7 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
                                      is.na(cdec_wide$discharge_cfs) == F,], aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
     geom_ribbon(data = cdec_wide[cdec_wide$Site_no %in% c("FRE"),],
                 aes(ymax = discharge_cfs, ymin = 0), color = "slateblue4", fill = "slateblue4", alpha = .2) +
-    geom_line(alpha = .8, linewidth = .8) + scale_x_date(date_breaks = "1 month", date_labels = "%b-1") +
+    geom_line(alpha = .8, linewidth = .8) + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     geom_line(data = cdec_wide[cdec_wide$Site_no %in% c("LIS") & 
                                  is.na(cdec_wide$discharge_cfs) == F,], alpha = .2) + animCol +
     theme_bw() + labs(y = "Discharge (cfs)", x = NULL) +
@@ -346,9 +346,10 @@ cowplot::plot_grid(
                    contdoplot + theme(axis.text.x = element_blank()),
                    contspcplot + theme(axis.text.x = element_blank()),
                    contfdomplot + theme(axis.text.x = element_blank()),
+                   contturbplot  + theme(axis.text.x = element_blank()),
                    contchlplot,
                    align  = "v",
-                   nrow = 7)
+                   nrow = 8)
 
 dev.off()
 
