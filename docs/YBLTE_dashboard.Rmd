@@ -92,5 +92,13 @@ PCA animation
 
 Water‑Quality PCA
 ```{r}
-knitr::include_graphics("../Output/Figures/pca_flow.gif")
+knitr::include_graphics("../Output/Figures/pca_flow_horizontal2.gif")
+```
+
+End member mixing analysis
+=====================================
+
+End member mixing analysis (EMMA)
+```{r}
+knitr::include_graphics("../Output/Figures/YBLTE_EMMA_01.png")
 ```
