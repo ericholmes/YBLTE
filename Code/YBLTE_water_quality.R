@@ -332,6 +332,7 @@ cdec_wide_stage$Sitefac <-  factor(cdec_wide_stage$Site_no, levels = c("KNL", "K
 (stageplot <- ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
                      aes(x = Datetime, y = stage_ft, color = Sitefac)) + 
     geom_line(linewidth = 1) +  
+    scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no == "KNL" & is.na(cdec_wide_stage$Site_no) == F, ], linewidth = 3, alpha = .5) +
     scale_color_viridis_d() + 
   theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL))
@@ -388,6 +389,7 @@ ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ],
     aes(ymin = ymin, ymax = ymax, fill = above),
     alpha = 0.35, show.legend = F) +
     theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL) +
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
   geom_line(alpha = 0, aes(y = stage_ft, color = Sitefac)) +  
     geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("KLG", "KNL", "LIS"), ], linewidth = 1, 
               aes(y = stage_ft, color = Sitefac)) +
@@ -403,6 +405,7 @@ ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ],
   geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("FRE", "YBT", "LIS"), ], linewidth = 1, 
             aes(y = stage_ft, color = Sitefac)) +
   scale_color_viridis_d() + 
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
   geom_ribbon(data = stage_wide,
               aes(ymin = yminfre, ymax = ymaxfre, fill = above32),
               alpha = 0.35, show.legend = F) +
@@ -411,17 +414,19 @@ ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ],
   scale_fill_manual(values = c("white", "blue"))
 
 ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
-                     aes(x = Datetime, y = stage_ft, color = Sitefac)) + 
-    geom_line(alpha = 0) +  
-    geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("YBT", "YBY"), ], linewidth = 1) +
-    # geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no == "KNL" & is.na(cdec_wide_stage$Site_no) == F, ], linewidth = 3, alpha = .5) +
-    scale_color_viridis_d() + 
-    theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL)
+       aes(x = Datetime, y = stage_ft, color = Sitefac)) + 
+  geom_line(alpha = 0) +  
+  geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("YBT", "YBY"), ], linewidth = 1) +
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+  # geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no == "KNL" & is.na(cdec_wide_stage$Site_no) == F, ], linewidth = 3, alpha = .5) +
+  scale_color_viridis_d() + 
+  theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL)
 
 ggplot(cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F, ], 
        aes(x = Datetime, y = stage_ft, color = Sitefac)) + 
   geom_line(alpha = 0) +  
   geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no %in% c("I80", "LIS"), ], linewidth = 1) +
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
   # geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no == "KNL" & is.na(cdec_wide_stage$Site_no) == F, ], linewidth = 3, alpha = .5) +
   scale_color_viridis_d() + 
   theme_bw() + labs(title = "Stage ft", y = "Stage (ft)", x = NULL)
