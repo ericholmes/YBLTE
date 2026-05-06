@@ -3,7 +3,7 @@ library(janitor)
 library(lubridate)
 
 # Load and clean CIMIS data ----
-cimis <- read.csv("Data/tabular/CIMIS/Cimis_Davis_1997-2026.csv") %>%
+cimis <- read.csv("Data/tabular/CIMIS/Cimis_Davis_1983-2026.csv") %>%
   clean_names()
 
 cimis$date <- as.Date(cimis$date, format = "%m/%d/%Y")

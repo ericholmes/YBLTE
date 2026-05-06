@@ -2,9 +2,6 @@ library(tidyverse)
 library(lubridate)
 library(ggplot2)
 
-library(tidyverse)
-library(lubridate)
-
 #----------------------------------------------------------
 # Load all tables
 #----------------------------------------------------------
@@ -257,7 +254,7 @@ rep_analytes <- c(
   "Specific_Conductance",
   "DOC",
   "SPM",
-  "DIN",
+  # "DIN",
   "DiSi",
   "Ca"
 )
@@ -331,8 +328,195 @@ ggplot() +
     size = 4
   ) +
   labs(
-    title = "PCA of Schemel 2000 Chemistry (Reduced Analyte Set)",
+    title = "PCA of Schemel 2000 Chemistry",
     x = "PC1",
     y = "PC2"
   ) +
   theme_minimal() + scale_shape_manual(values = 1:12)
+
+
+
+# EMMA model --------------------------------------------------------------
+
+# -------------------------------------------------
+# 1. Basic setup
+# -------------------------------------------------
+
+df <- chem_master %>%
+  mutate(Date = ymd(Date))
+
+# Static endmembers
+endmember_sites <- c(
+  "CBD99E",   # Colusa Drain / Ridgecut
+  "CC113",    # Cache Creek
+  "FRW",      # Fremont Weir
+  "PCD"       # Putah Creek
+)
+unique(chem_master$Site)
+# Yolo Bypass interior sites (EDIT THESE to your actual toe drain / tule canal IDs)
+yolo_sites <- c("STTD",      "TD80" ,     "TD5")
+
+# Tracers to use
+tracers <- c("Specific_Conductance", "Ca", "DiSi", "DOC", "SPM")
+
+df_clean <- df %>%
+  select(Site, Date, all_of(tracers)) %>%
+  drop_na()
+
+# -------------------------------------------------
+# 2. Static endmember chemistry (mean over all dates)
+# -------------------------------------------------
+
+endm_static <- df_clean %>%
+  filter(Site %in% endmember_sites) %>%
+  group_by(Site) %>%
+  summarise(across(all_of(tracers), mean, na.rm = TRUE), .groups = "drop")
+
+# -------------------------------------------------
+# 3. Yolo samples
+# -------------------------------------------------
+
+mix <- df_clean %>%
+  filter(Site %in% yolo_sites)
+
+# -------------------------------------------------
+# 4. PCA on all samples (endmembers + Yolo)
+# -------------------------------------------------
+
+df_pca <- bind_rows(
+  endm_static %>% mutate(type = "endmember"),
+  mix          %>% mutate(type = "mix")
+)
+
+pca <- prcomp(df_pca %>% select(all_of(tracers)), scale. = TRUE)
+
+scores <- as_tibble(pca$x) %>%
+  bind_cols(df_pca %>% select(Site, Date, type))
+
+# -------------------------------------------------
+# 5. Extract static PC scores for each endmember
+# -------------------------------------------------
+
+endm_pc <- scores %>%
+  filter(type == "endmember") %>%
+  group_by(Site) %>%
+  summarise(
+    PC1 = mean(PC1, na.rm = TRUE),
+    PC2 = mean(PC2, na.rm = TRUE),
+    PC3 = mean(PC3, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+FRW_pc <- endm_pc %>% filter(Site == "FRW")   %>% select(PC1, PC2, PC3) %>% as.numeric()
+CC_pc  <- endm_pc %>% filter(Site == "CC113") %>% select(PC1, PC2, PC3) %>% as.numeric()
+CBD_pc <- endm_pc %>% filter(Site == "CBD99E")%>% select(PC1, PC2, PC3) %>% as.numeric()
+PCD_pc <- endm_pc %>% filter(Site == "PCD")   %>% select(PC1, PC2, PC3) %>% as.numeric()
+
+# -------------------------------------------------
+# 6. Mixing space for Yolo samples (PC1–PC3)
+# -------------------------------------------------
+
+mix_pc <- scores %>%
+  filter(type == "mix") %>%
+  select(Site, Date, PC1, PC2, PC3)
+
+# -------------------------------------------------
+# 7. 4‑source mixing solver (static endmembers in PC space)
+# -------------------------------------------------
+
+solve_4source <- function(mix, e1, e2, e3, e4) {
+  A <- matrix(c(
+    e1[1], e2[1], e3[1], e4[1],
+    e1[2], e2[2], e3[2], e4[2],
+    e1[3], e2[3], e3[3], e4[3],
+    1,     1,     1,     1
+  ), 4, 4, byrow = TRUE)
+  
+  b <- c(mix[1], mix[2], mix[3], 1)
+  
+  out <- tryCatch(solve(A, b), error = function(e) rep(NA, 4))
+  as.numeric(out)
+}
+
+mix_fractions <- mix_pc %>%
+  rowwise() %>%
+  mutate(
+    frac = list(
+      solve_4source(
+        c(PC1, PC2, PC3),
+        FRW_pc,
+        CC_pc,
+        CBD_pc,
+        PCD_pc
+      )
+    ),
+    f_FRW = frac[1],
+    f_CC  = frac[2],
+    f_CBD = frac[3],
+    f_PCD = frac[4]
+  ) %>%
+  ungroup() %>%
+  mutate(
+    across(c(f_FRW, f_CC, f_CBD, f_PCD), ~pmax(pmin(.x, 1), 0)),
+    sum_clamp = f_FRW + f_CC + f_CBD + f_PCD,
+    f_FRW_plot = f_FRW / sum_clamp,
+    f_CC_plot  = f_CC  / sum_clamp,
+    f_CBD_plot = f_CBD / sum_clamp,
+    f_PCD_plot = f_PCD / sum_clamp,
+    unexplained = 1 - (f_FRW + f_CC + f_CBD + f_PCD)
+  )
+
+# -------------------------------------------------
+# 8. Stacked bar plot of static‑endmember fractions
+# -------------------------------------------------
+
+mix_long <- mix_fractions %>%
+  select(Date, Site, f_FRW_plot, f_CC_plot, f_CBD_plot, f_PCD_plot) %>%
+  pivot_longer(
+    cols = starts_with("f_"),
+    names_to = "source",
+    values_to = "fraction"
+  ) %>%
+  mutate(
+    source = recode(source,
+                    f_FRW_plot = "Fremont Weir",
+                    f_CC_plot  = "Cache Creek",
+                    f_CBD_plot = "Colusa Drain",
+                    f_PCD_plot = "Putah Creek"
+    )
+  )
+mix_long$Sitefac <- factor(mix_long$Site, levels = c("TD5", "TD80", "STTD"))
+
+ggplot(mix_long, aes(Date, fraction, fill = source)) +
+  geom_col(width = 6) +
+  facet_grid(Sitefac ~ .) +
+  scale_fill_manual(values = c(
+    "Fremont Weir" = "skyblue",
+    "Cache Creek"  = "forestgreen",
+    "Colusa Drain" = "goldenrod",
+    "Putah Creek"  = "skyblue3"
+  )) +
+  labs(
+    title = "Schemel 2000 EMMA",
+    x = "Date",
+    y = "Fraction"
+  ) +
+  theme_bw()
+
+mix_long %>%
+  arrange(Date) %>%   # important for area plots
+  ggplot(aes(Date, fraction, fill = source)) +
+  geom_area(alpha = 0.85, color = NA) +
+  facet_grid(Sitefac ~ .) +
+  scale_fill_manual(values = c(
+    "Fremont Weir" = "skyblue",
+    "Cache Creek"  = "forestgreen",
+    "Colusa Drain" = "goldenrod",
+    "Putah Creek"  = "skyblue3"
+  )) +
+  labs(
+    title = "Schemel 2000 EMMA – Stacked Area Representation",
+    x = "Date",
+    y = "Fraction"
+  ) +
+  theme_bw()
