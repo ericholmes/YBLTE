@@ -70,8 +70,8 @@ for(f in ec){
   cond_temp$temp <- (cond_temp$temp-32)*5/9
   
   # calculate SpC from raw conductivity and temperature
-  cond_temp$spc <- cond_temp$raw_cond/(1+0.02*(cond_temp$temp-25))
-  
+  # cond_temp$spc <- cond_temp$raw_cond/(1+0.02*(cond_temp$temp-25))
+  cond_temp$spc <- cond_temp$raw_cond
   conddat_raw <- rbind(conddat_raw, cond_temp[,c("station","datetime","spc")])
   }
 
