@@ -717,6 +717,10 @@ pflowgif <- animate(
   height=300, width=600, fps = 10)
 
 # combine pca and flow animations
+pcgif <- image_read(pcgif)
+flowgif <- image_read(flowgif)
+pflowgif <- image_read(pflowgif)
+pcgif_lebls <- image_read(pcgif_lebls)
 animation <- image_append(c(pcgif[1],flowgif[1], pflowgif[1]), stack = T)
 for(i in 2:100){
   combined_gif <- image_append(c(pcgif[i],flowgif[i], pflowgif[i]), stack = T)
