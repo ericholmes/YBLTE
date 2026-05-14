@@ -1,12 +1,11 @@
 ## YBLTE 2025-26
 ## Water quality logger data processing script
 
-## note - for adding new data, just need to update sites and filter good date range
-
 ## Load Libraries ----------------------------------------------------------
 
 library(tidyverse)
 library(ggridges)
+library(dygraphs)
 
 ## Load data ---------------------------------------------------------------
 saveOutput = T
@@ -16,7 +15,7 @@ folders <- list.files("Data/tabular/MiniDOTs")
 
 ## Load miniDOT serial lookup table
 dobolookup <- read.csv("Data/tabular/YBLTE_miniDOTlookup.csv")
-  # miniDOT lookup has the station, serial, and start/end (not used, easier to change in code)
+  # miniDOT lookup has the station, serial, deploy/retrieval, wet/dry
 
 ## Create empty data frame to compile all dobo data
 dobodat_raw <- data.frame()
@@ -45,7 +44,7 @@ for(folder in folders){
   }
 }
 
-## Create empty data frame to compile all conductivity data, different because time not guaranteed to line up
+## Create empty data frame to compile all conductivity data, time does not line up with minidots
 conddat_raw <- data.frame()
 
 ## Load EC data
@@ -64,7 +63,6 @@ for(f in ec){
   # convert time type
   cond_temp$datetime <- as.POSIXct(cond_temp$datetime, tz="America/Los_Angeles", 
                                    format="%m/%d/%y %I:%M:%S %p")
-  # cond_temp$datetime <- format(cond_temp$datetime, "%Y-%m-%d %H:%M:%S")
   
   # convert temperature from F to C
   cond_temp$temp <- (cond_temp$temp-32)*5/9
@@ -88,16 +86,34 @@ flow <- cdec %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC")
                         & Datetime > startdate)
 
 ## Clean DOBO data ---------------------------------------------------------
+# Drop NA
+dobodat <- drop_na(dobodat_raw)
+conddat <- drop_na(conddat_raw)
+
 # Filter to current water year 
-dobodat <- dobodat_raw[dobodat_raw$datetime > startdate,]
-conddat <- conddat_raw[conddat_raw$datetime > startdate & is.na(conddat_raw$datetime) == F,]
+dobodat <- dobodat[dobodat$datetime > startdate,]
+conddat <- conddat[conddat$datetime > startdate,]
 
 # Get earliest dates for each station
 # dobodat %>% group_by(station)%>% summarize(mindate = min(datetime)))
 
-# Filter dates, imported from other script so not used
-# dobodat <- dobodat[dobodat$datetime > as.POSIXct("2025-09-26 13:00:00"),]
-# dobodat <- dobodat[!(dobodat$station == "BL5" & dobodat$datetime < as.POSIXct("2024-07-3 13:00:00")),]
+# Filter dates for outliers, pulled from csv
+qclookup <- read.csv("Data/tabular/YBLTE_logger_qc_lookup.csv")
+
+qclookup$start <- as.POSIXct(qclookup$start, format="%m/%d/%Y %H:%M")
+qclookup$end <- as.POSIXct(qclookup$end, format="%m/%d/%Y %H:%M")
+
+# for (s in unique(dobodat$station)){
+#   qc_filt <- (qclookup %>% filter(model == "MiniDOT"))[qclookup$station == s,]
+#   dobodat <- dobodat %>% filter((station == s) & 
+#                                   (datetime >= qc_filt$start) & (datetime <= qc_filt$end))
+# }
+
+for (s in unique(conddat$station)){
+  qc_filt <- qclookup %>% filter((model == "EC") & (station == s))
+  conddat <- conddat %>% filter(!((station == s) & 
+    ((datetime < qc_filt$start) | (datetime > qc_filt$end))))
+}
 
 # Convert date type
 dobodat$date <- as.Date(dobodat$datetime)
@@ -108,6 +124,13 @@ dobodat$station <- factor(dobodat$station,
                           levels = c("KNG3", "CNW", "YBLR4", "SB4", "I80", "TEW", "TER"))
 conddat$station <- factor(conddat$station, 
                           levels = c("KNG3", "CNW", "YBLR4", "SB4", "I80", "TEW", "TER"))
+dobodat <- arrange(dobodat, station)
+conddat <- arrange(conddat, station)
+
+# Save datasets for plotting in dashboard
+if(saveOutput == T){
+  save(dobodat, conddat, file = "Data/YBLTE_logger.RData")
+}
 
 # Get daily min, max, mean per variable
 dobodaily <- dobodat %>% filter(temp_c < 30) %>% group_by(station, date) %>% 
@@ -139,7 +162,27 @@ cdmelt$stationfac <- factor(cdmelt$station,
 wqp <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
 wqp <- wqp %>% filter(Site %in% unique(dobodat$station))
 
-## Compare logger data with wqp data
+# Create dygraphs for cleaning data and interactive aspect
+for(s in unique(dobodat$station)){
+  dyD <- dygraph(dobodat %>% filter(station == s) %>% subset(select = c(datetime, temp_c, do_mgl)),
+                main = paste("MiniDOT at", s), group = s, height = 300, width = "47%") %>%     
+    dyAxis("y", label = "Temperature (C)") %>% 
+    dyAxis("y2", label = "Dissolved Oxygen (mg/L)", independentTicks = T) %>% 
+    dySeries("temp_c", label = "Temperature") %>% 
+    dySeries("do_mgl", label = "DO", axis = "y2") %>% 
+    dyRangeSelector(dateWindow = c(startdate, enddate))
+
+  dyC <- dygraph(conddat %>% filter(station == s) %>% subset(select = c(datetime, spc)), 
+                main = paste("EC at", s), group = s, height = 300, width = "47%") %>% 
+    dyAxis("y", label = "Specific Conductivity (uS/cm)") %>% 
+    dySeries("spc", label = "Conductivity") %>% 
+    dyRangeSelector(dateWindow = c(startdate, enddate))
+  # Set plots in same row and adjust size
+  dy <- htmltools::browsable(htmltools::tags$div(style = "display: flex; flex-direction: row; gap: 20px;", dyD, dyC))
+  print(dy)
+}
+
+# Compare logger data with wqp data
 wqp_plts <- c()
 for(s in unique(dobodat$station)){
   wqp_plts <- append(wqp_plts,ggplot() + geom_line(data = dobodat %>% filter(station == s), aes(x = datetime, y = temp_c)) +

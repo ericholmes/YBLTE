@@ -15,6 +15,7 @@ library(shiny)
 library(flexdashboard)
 library(readxl)
 library(tidyverse)
+library(dygraphs)
 
 # Load spatial objects from your saved Rdata file
 load("../data/spatial/Yolo_map_data.Rdata")
@@ -85,6 +86,42 @@ Heatmap
 Water‑Quality Heat Map
 ```{r}
 knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_01.png")
+```
+
+Logger Data
+=====================================
+
+Continuous Water Quality Data
+```{r}
+load("../Data/YBLTE_logger.RData")
+startdate <- as.POSIXct("2025-11-01")
+enddate <- Sys.Date()
+
+dy_plts <- list()
+i = 1
+
+for(s in unique(dobodat$station)){
+  dyD <- dygraph(dobodat %>% filter(station == s) 
+        %>% subset(select = c(datetime, temp_c, do_mgl)),
+    main = paste("MiniDOT at", s), group = s, height = 300, width = "47%") %>%     
+    dyAxis("y", label = "Temperature (C)") %>% 
+    dyAxis("y2", label = "Dissolved Oxygen (mg/L)", independentTicks = T) %>% 
+    dySeries("temp_c", label = "Temperature") %>% 
+    dySeries("do_mgl", label = "DO", axis = "y2") %>% 
+    dyRangeSelector(dateWindow = c(startdate, enddate))
+
+  dyC <- dygraph(conddat %>% filter(station == s) %>% subset(select = c(datetime, spc)), 
+                main = paste("EC at", s), group = s, height = 300, width = "47%") %>% 
+    dyAxis("y", label = "Specific Conductivity (uS/cm)") %>% 
+    dySeries("spc", label = "Conductivity") %>% 
+    dyRangeSelector(dateWindow = c(startdate, enddate))
+  # Set plots in same row and adjust size
+  dy <- htmltools::browsable(htmltools::tags$div(style = "display: flex; flex-direction: row; gap: 20px;", dyD, dyC))
+  dy_plts[[i]] <- dy
+  i <- i+1
+}
+
+htmltools::tagList(dy_plts)
 ```
 
 PCA animation
