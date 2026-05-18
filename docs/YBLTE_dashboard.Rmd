@@ -92,6 +92,8 @@ Logger Data
 =====================================
 
 Continuous Water Quality Data
+
+### 
 ```{r}
 load("../Data/YBLTE_logger.RData")
 startdate <- as.POSIXct("2025-11-01")
@@ -103,17 +105,17 @@ i = 1
 for(s in unique(dobodat$station)){
   dyD <- dygraph(dobodat %>% filter(station == s) 
         %>% subset(select = c(datetime, temp_c, do_mgl)),
-    main = paste("MiniDOT at", s), group = s, height = 300, width = "47%") %>%     
+    main = paste("MiniDOT at", s), group = s, height = 200, width = 200) %>%     
     dyAxis("y", label = "Temperature (C)") %>% 
     dyAxis("y2", label = "Dissolved Oxygen (mg/L)", independentTicks = T) %>% 
-    dySeries("temp_c", label = "Temperature") %>% 
+    dySeries("temp_c", label = "Temp.") %>% 
     dySeries("do_mgl", label = "DO", axis = "y2") %>% 
     dyRangeSelector(dateWindow = c(startdate, enddate))
 
   dyC <- dygraph(conddat %>% filter(station == s) %>% subset(select = c(datetime, spc)), 
-                main = paste("EC at", s), group = s, height = 300, width = "47%") %>% 
-    dyAxis("y", label = "Specific Conductivity (uS/cm)") %>% 
-    dySeries("spc", label = "Conductivity") %>% 
+                main = paste("EC at", s), group = s, height = 200, width = 200) %>% 
+    dyAxis("y", label = "Sp. Conductivity (uS/cm)") %>% 
+    dySeries("spc", label = "SPC") %>% 
     dyRangeSelector(dateWindow = c(startdate, enddate))
   # Set plots in same row and adjust size
   dy <- htmltools::browsable(htmltools::tags$div(style = "display: flex; flex-direction: row; gap: 20px;", dyD, dyC))
@@ -121,7 +123,17 @@ for(s in unique(dobodat$station)){
   i <- i+1
 }
 
-htmltools::tagList(dy_plts)
+htmltools::tagList(dy_plts[1])
+htmltools::tagList(dy_plts[2])
+htmltools::tagList(dy_plts[3])
+htmltools::tagList(dy_plts[4])
+```
+
+### 
+```{r}
+htmltools::tagList(dy_plts[5])
+htmltools::tagList(dy_plts[6])
+htmltools::tagList(dy_plts[7])
 ```
 
 PCA animation
