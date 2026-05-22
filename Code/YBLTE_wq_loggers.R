@@ -97,23 +97,55 @@ conddat <- conddat[conddat$datetime > startdate,]
 # Get earliest dates for each station
 # dobodat %>% group_by(station)%>% summarize(mindate = min(datetime)))
 
-# Filter dates for outliers, pulled from csv
+# Filter dates for bad data, pulled from csv where predetermined
 qclookup <- read.csv("Data/tabular/YBLTE_logger_qc_lookup.csv")
 
 qclookup$start <- as.POSIXct(qclookup$start, format="%m/%d/%Y %H:%M")
 qclookup$end <- as.POSIXct(qclookup$end, format="%m/%d/%Y %H:%M")
 
-# for (s in unique(dobodat$station)){
-#   qc_filt <- (qclookup %>% filter(model == "MiniDOT"))[qclookup$station == s,]
-#   dobodat <- dobodat %>% filter((station == s) & 
-#                                   (datetime >= qc_filt$start) & (datetime <= qc_filt$end))
-# }
+for (s in unique(dobodat$station)){
+  qc_filt <- (qclookup %>% filter(model == "MiniDOT"))[qclookup$station == s,]
+  dobodat <- dobodat %>% filter(!((station == s) &
+    ((datetime < qc_filt$start) | (datetime > qc_filt$end))))
+}
 
 for (s in unique(conddat$station)){
   qc_filt <- qclookup %>% filter((model == "EC") & (station == s))
   conddat <- conddat %>% filter(!((station == s) & 
     ((datetime < qc_filt$start) | (datetime > qc_filt$end))))
 }
+
+# Extra manual filtering for outliers (minidot SB4 I80, ec KNG3 YBLR4 SB4 I80 TER)
+dobodat <- dobodat %>% filter(!((station == "SB4") &
+              ((datetime > as.POSIXct("01/27/2026 11:19", format="%m/%d/%Y %H:%M")) 
+               & (datetime < as.POSIXct("02/17/2026 19:42", format="%m/%d/%Y %H:%M")))))
+dobodat <- dobodat %>% filter(!((station == "I80") &
+              ((datetime > as.POSIXct("12/16/2025 11:57", format="%m/%d/%Y %H:%M")) 
+               & (datetime < as.POSIXct("12/16/2025 13:16", format="%m/%d/%Y %H:%M")))))
+
+conddat <- conddat %>% filter(!((station == "KNG3") &
+              (((datetime > as.POSIXct("01/24/2026 07:30", format="%m/%d/%Y %H:%M"))
+               & (datetime < as.POSIXct("01/8/2026 05:30", format="%m/%d/%Y %H:%M")))
+               | ((datetime > as.POSIXct("02/10/2026 17:00", format="%m/%d/%Y %H:%M"))
+                  & (datetime < as.POSIXct("02/10/2026 18:00", format="%m/%d/%Y %H:%M")))
+               | ((datetime > as.POSIXct("02/23/2026 04:00", format="%m/%d/%Y %H:%M"))
+                  & (datetime < as.POSIXct("02/23/2026 05:00", format="%m/%d/%Y %H:%M")))
+               | ((datetime > as.POSIXct("03/05/2026 16:30", format="%m/%d/%Y %H:%M"))
+                  & (datetime < as.POSIXct("03/05/2026 17:30", format="%m/%d/%Y %H:%M"))))))
+conddat <- conddat %>% filter(!((station == "YBLR4") &
+              ((datetime > as.POSIXct("02/28/2026 03:00", format="%m/%d/%Y %H:%M"))
+               & (datetime < as.POSIXct("02/28/2026 04:00", format="%m/%d/%Y %H:%M")))))
+conddat <- conddat %>% filter(!((station == "SB4") &
+              ((datetime > as.POSIXct("01/27/2026 22:00", format="%m/%d/%Y %H:%M"))
+               & (datetime < as.POSIXct("02/17/2026 16:30", format="%m/%d/%Y %H:%M")))))
+conddat <- conddat %>% filter(!((station == "I80") &
+              (((datetime > as.POSIXct("02/15/2026 04:00", format="%m/%d/%Y %H:%M"))
+               & (datetime < as.POSIXct("02/15/2026 05:00", format="%m/%d/%Y %H:%M")))
+               | ((datetime > as.POSIXct("02/21/2026 09:30", format="%m/%d/%Y %H:%M"))
+                  & (datetime < as.POSIXct("02/21/2026 10:30", format="%m/%d/%Y %H:%M"))))))
+conddat <- conddat %>% filter(!((station == "TER") & 
+              ((datetime > as.POSIXct("12/31/2025 22:00", format="%m/%d/%Y %H:%M"))
+               & (datetime < as.POSIXct("12/31/2025 23:00", format="%m/%d/%Y %H:%M")))))
 
 # Convert date type
 dobodat$date <- as.Date(dobodat$datetime)

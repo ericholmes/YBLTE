@@ -12,13 +12,11 @@ fish <- readxl::read_excel("Data/tabular/YBLTE_fish_specimens.xlsx")
 # from site data filter for just the site ids and types
 sites <- sites %>% subset(select=c("Site_id", "Sitetype"))
 
-# (temp) change SB3 to SB4 in sites
+# change SB3 to SB4 in sites, just to get the site type
 sites[sites$Site_id=="SB4","Site_id"] <- "SB3"
 
 # merge sites to fish to get the site types per fish
 fish <- left_join(fish, sites, by = join_by(StationCode == Site_id))
-
-  # need to update the sites!! ask abt... also are sb4 and sb4 the same?????
 
 # get counts for record keeping - total and per habitat/date
 total <- dim(fish)[1]

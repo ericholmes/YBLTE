@@ -91,7 +91,7 @@ knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_01.png")
 Logger Data
 =====================================
 
-Continuous Water Quality Data
+Continuous Water Quality Data (may need to refresh and change zoom for view)
 
 ### 
 ```{r}
