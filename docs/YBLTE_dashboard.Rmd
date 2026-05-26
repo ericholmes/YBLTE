@@ -26,6 +26,9 @@ proj_raw <- read_excel("../Data/tabular/YBLTE_sites.xlsx")
 proj_pts <- proj_raw %>%
   st_as_sf(coords = c("Lon", "Lat"), crs = 4326, remove = FALSE)
 
+# Filter points for sites of interest
+proj_pts <- proj_pts %>% filter((Sampletype == "main")|(Sampletype == "fish only"))
+
 # Prepare restoration polygons
 yolo_bypass <- bypasses[bypasses$Feature_Name %in% 
                           c("Sacramento Bypass", "Yolo Bypass", "Yolo Bypass and Cache Slough"), ]
@@ -61,7 +64,8 @@ leaflet(rest_polys) %>%
   addCircleMarkers(
     data = proj_pts,
     lng = ~Lon, lat = ~Lat,
-    radius = 6, color = "red",
+    radius = 6, color = ~ifelse(proj_pts$Sampletype=="main", "red", "steelblue"),
+    group = ~ifelse(proj_pts$Sampletype=="main", "Main Site", "Fish Only Site"),
     fillColor = "yellow", fillOpacity = 0.8,
     popup = ~paste0("<b>Project:</b> ", Site_id, " (", Sitename, ")<br>", Sitetype, " Site<br>Data: ",
                     ifelse(Point_wq=="n", "", "Point Water Quality - "),
@@ -74,8 +78,8 @@ leaflet(rest_polys) %>%
                     ifelse(DOBO=="p", "(partial) - ", "")) 
     )%>%
   addLayersControl(
-    baseGroups = c("Imagery"),
-    overlayGroups = c("Restoration Projects"),
+    baseGroups = c("Main Site"),
+    overlayGroups = c("Fish Only Site", "Restoration Projects"),
     options = layersControlOptions(collapsed = FALSE)
   ) %>% 
   setView(lat = 38.45, lng = -121.6, zoom = 9)
@@ -97,7 +101,7 @@ Continuous Water Quality Data (may need to refresh and change zoom for view)
 ```{r}
 load("../Data/YBLTE_logger.RData")
 startdate <- as.POSIXct("2025-11-01")
-enddate <- Sys.Date()
+enddate <- enddate <- as.POSIXct("2026-05-31")
 
 dy_plts <- list()
 i = 1

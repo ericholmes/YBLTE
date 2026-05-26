@@ -75,7 +75,7 @@ for(f in ec){
 
 # Time frame for plots
 startdate <- as.POSIXct("2025-11-01")
-enddate <- Sys.Date()
+enddate <- as.POSIXct("2026-05-31")
 
 ## Load flow data from file then clean
 load("Data/cdec_flow_data.Rdata")
@@ -91,11 +91,8 @@ dobodat <- drop_na(dobodat_raw)
 conddat <- drop_na(conddat_raw)
 
 # Filter to current water year 
-dobodat <- dobodat[dobodat$datetime > startdate,]
-conddat <- conddat[conddat$datetime > startdate,]
-
-# Get earliest dates for each station
-# dobodat %>% group_by(station)%>% summarize(mindate = min(datetime)))
+dobodat <- dobodat[(dobodat$datetime > startdate) & (dobodat$datetime < enddate),]
+conddat <- conddat[(conddat$datetime > startdate) & (conddat$datetime < enddate),]
 
 # Filter dates for bad data, pulled from csv where predetermined
 qclookup <- read.csv("Data/tabular/YBLTE_logger_qc_lookup.csv")

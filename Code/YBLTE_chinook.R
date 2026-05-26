@@ -15,7 +15,7 @@ library(tidyverse)
 # 
 # chinook <- rbind(dat1, dat2) %>% filter(is.na(date) == F)
 
-chinook <- readxl::read_excel("Data/tabular/YBFMP_juv_chn_wy2026_040626.xlsx") %>% janitor::clean_names()
+chinook <- readxl::read_excel("Data/tabular/YBLTE_fish_specimens.xlsx") %>% janitor::clean_names()
 
 chinook$month <- as.integer(format(chinook$sample_date, format = "%m"))
 chinook$day <- as.integer(format(chinook$sample_date, format = "%j"))
@@ -33,7 +33,6 @@ chinply <- chinook %>% group_by(sample_date, station_code, take) %>%  summarize(
 # write.csv(chinook, "Output/Chinook.csv", row.names = F)
 
 chinsizeply <- chinook %>% group_by(sample_date, station_code) %>%  summarize(count = length(sample_date), meanfl = mean(fork_length), meanwt = mean(weight))
-cnwchin <- chinook[chinook$station_code == "CNW",]
 # plotting ----------------------------------------------------------------
 
 # Water-year day sequence (adjust range as needed)
@@ -51,7 +50,7 @@ jitter_width <- 0.3
 # Jitter on water-year day, not calendar day
 chinook$wydayjitter <- chinook$wyday + runif(nrow(chinook), -jitter_width, jitter_width)
 
-png("Output/Figures/Chinook_wild_LAD_wy%03d.png",
+png("Output/Figures/Chinook_take_wild_LAD_wy%03d.png",
     height = 5.5, width = 6.5, units = "in", res = 300)
 
 ggplot(chinook, aes(x = wyday)) + theme_bw() +
@@ -66,8 +65,8 @@ ggplot(chinook, aes(x = wyday)) + theme_bw() +
   coord_cartesian(ylim = range(chinook$fork_length)) +
   # Water-year x-axis: adjust breaks/labels to your season
   scale_x_continuous(
-    breaks = c(61, 92, 123, 151),
-    labels = c("Dec", "Jan", "Feb", "Mar"),
+    breaks = c(61, 92, 123, 151, 182),
+    labels = c("Dec", "Jan", "Feb", "Mar", "Apr"),
     limits = c(61, max(chinook$wyday, na.rm = TRUE) + 15)
   ) +
   # LAD lines in wyday space
@@ -75,50 +74,19 @@ ggplot(chinook, aes(x = wyday)) + theme_bw() +
   stat_function(fun = function(x) exp(3.516464 + 0.006574 * (x + 71 - 91))) +  # func2
   stat_function(fun = function(x) exp(3.516464 + 0.006574 * (x + 160 - 91))) +  # func1
   annotate("text",
-           x = c(180, 178, 174, 110),
-           y = c(69, 75, 97, 129),
+           x = c(81, 80, 76, 67),
+           y = c(35, 39, 51, 85),
            label = c("Fall", "Spring", "Winter", "Late-fall"),
            color = RColorBrewer::brewer.pal(8, "Dark2")[c(1, 3, 4, 2)],
-           angle = c(35, 37, 41, 37)) +
+           angle = c(20, 29, 34, 46)) +
   theme(legend.position = "bottom", text = element_text(family = "serif")) +
-  geom_point(data = chinook[chinook$take %in% c("D", "Y"),],
-             aes(x = wydayjitter, y = fork_length), size = 3, color = "orange") +
-  geom_point(data = chinook[chinook$take %in% "I",],
-             aes(x = wydayjitter, y = fork_length), size = 3, color = "red") +
+  geom_point(data = chinook,#[chinook$take %in% c("D", "Y"),],
+             aes(x = wydayjitter, y = fork_length, color = take), size = 3) +
+  # geom_point(data = chinook[chinook$take %in% "I",],
+  #            aes(x = wydayjitter, y = fork_length, color = take), size = 3) +
   geom_point(aes(x = wydayjitter, y = fork_length)) +
-  scale_color_brewer(palette = "Dark2") +
-  labs(x = NULL, y = "Fork Length (mm)", color = "Fisher LAD class")
-
-
-ggplot(cnwchin, aes(x = wyday)) + theme_bw() +
-  geom_ribbon(data = mydata, aes(ymin = func2, ymax = func1),
-              fill = RColorBrewer::brewer.pal(8, "Dark2")[3], alpha = .2) +
-  geom_ribbon(data = mydata, aes(ymin = min(chinook$fork_length), ymax = func1),
-              fill = RColorBrewer::brewer.pal(8, "Dark2")[1], alpha = .2) +
-  geom_ribbon(data = mydata, aes(ymin = func2, ymax = func3),
-              fill = RColorBrewer::brewer.pal(8, "Dark2")[4], alpha = .2) +
-  geom_ribbon(data = mydata, aes(ymin = func3, ymax = 200),
-              fill = RColorBrewer::brewer.pal(8, "Dark2")[2], alpha = .2) +
-  coord_cartesian(ylim = range(chinook$fork_length)) +
-  # Water-year x-axis: adjust breaks/labels to your season
-  scale_x_continuous(
-    breaks = c(61, 92, 123, 151),
-    labels = c("Dec", "Jan", "Feb", "Mar"),
-    limits = c(61, max(chinook$wyday, na.rm = TRUE) + 15)
-  ) +
-  # LAD lines in wyday space
-  stat_function(fun = function(x) exp(3.516464 + 0.006574 * (x + 26 - 91))) +  # func3
-  stat_function(fun = function(x) exp(3.516464 + 0.006574 * (x + 71 - 91))) +  # func2
-  stat_function(fun = function(x) exp(3.516464 + 0.006574 * (x + 160 - 91))) +  # func1
-  annotate("text",
-           x = c(180, 178, 174, 110),
-           y = c(69, 75, 97, 129),
-           label = c("Fall", "Spring", "Winter", "Late-fall"),
-           color = RColorBrewer::brewer.pal(8, "Dark2")[c(1, 3, 4, 2)],
-           angle = c(35, 37, 41, 37)) +
-  theme(legend.position = "bottom", text = element_text(family = "serif")) +
-  geom_point(aes(x = wydayjitter, y = fork_length)) +
-  scale_color_brewer(palette = "Dark2") +
-  labs(x = NULL, y = "Fork Length (mm)", color = "Fisher LAD class")
+  scale_color_manual(values = c('D' = "orange", 'I' = "red"), 
+                     labels = c("Direct", "Indirect"), name = "Take") +
+  labs(x = NULL, y = "Fork Length (mm)", title = "Fisher LAD class for YBLTE Fish")
 
 dev.off()
