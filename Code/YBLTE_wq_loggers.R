@@ -104,7 +104,7 @@ qclookup$start <- as.POSIXct(qclookup$start, format="%m/%d/%Y %H:%M")
 qclookup$end <- as.POSIXct(qclookup$end, format="%m/%d/%Y %H:%M")
 
 for (s in unique(dobodat$station)){
-  qc_filt <- (qclookup %>% filter(model == "MiniDOT"))[qclookup$station == s,]
+  qc_filt <- (qclookup %>% filter((model == "MiniDOT") & (station == s)))
   dobodat <- dobodat %>% filter(!((station == s) &
     ((datetime < qc_filt$start) | (datetime > qc_filt$end))))
 }
@@ -125,7 +125,7 @@ dobodat <- dobodat %>% filter(!((station == "I80") &
 
 conddat <- conddat %>% filter(!((station == "KNG3") &
               (((datetime > as.POSIXct("01/24/2026 07:30", format="%m/%d/%Y %H:%M"))
-               & (datetime < as.POSIXct("01/8/2026 05:30", format="%m/%d/%Y %H:%M")))
+               & (datetime < as.POSIXct("01/28/2026 05:30", format="%m/%d/%Y %H:%M")))
                | ((datetime > as.POSIXct("02/10/2026 17:00", format="%m/%d/%Y %H:%M"))
                   & (datetime < as.POSIXct("02/10/2026 18:00", format="%m/%d/%Y %H:%M")))
                | ((datetime > as.POSIXct("02/23/2026 04:00", format="%m/%d/%Y %H:%M"))
