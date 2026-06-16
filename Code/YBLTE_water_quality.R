@@ -121,6 +121,33 @@ cdec_wide$spc <- cdec_wide$ec / (1 + 0.02 * (cdec_wide$wtemp_c - 25))
 cdec_wide$Date <- as.Date(cdec_wide$Datetime)
 # cdec_wide <- cdec_wide[cdec_wide$ec > 50, ]
 
+yff <- read.csv("Data/tabular/Tidal_Habitat_sonde_data/2025-11_YFF_2026-05.csv")
+
+yff_cdec <- yff %>%
+  mutate(
+    Site_no  = SiteName,
+    Datetime = as.POSIXct(datetime, format = "%m/%d/%Y %H:%M"),
+    Date     = as.Date(Datetime),
+    
+    # CDEC-equivalent variables (YFF has no discharge or stage)
+    discharge_cfs = NA_real_,
+    stage_ft      = NA_real_,
+    wtemp_f       = Temp_C * 9/5 + 32,
+    wtemp_c       = Temp_C,
+    ec            = SpCond_uScm,
+    turb_fnu      = Turb_FNU,
+    ph            = pH,
+    fdom          = fDOM_RFU,
+    spc           = SpCond_uScm
+  ) %>%
+  select(
+    Site_no, Datetime, stage_ft, discharge_cfs, wtemp_f,
+    chla = Chloro_ugL, domgl = ODO_mgL, ph, ec, turb_fnu,
+    fdom, wtemp_c, spc, Date
+  )
+
+cdec_wide <- rbind(cdec_wide, yff_cdec)
+
 ## Preliminary plotting ----
 dput(unique(wqp$Site))
 
@@ -216,12 +243,13 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
                                           "YBY" = RColorBrewer::brewer.pal(8, "Set1")[4],
                                           "YBT" = RColorBrewer::brewer.pal(8, "Set1")[3],
                                           "FRE" = RColorBrewer::brewer.pal(8, "Set1")[2],
-                                          "CCY" = RColorBrewer::brewer.pal(8, "Set1")[7]))
+                                          "CCY" = RColorBrewer::brewer.pal(8, "Set1")[7],
+                                          "YFF" = "#999999"))
 
 (contspcplot <- ggplot(cdec_wide[is.na(cdec_wide$ec) == F,], aes(x = Datetime, y = ec, color = Site_no)) + 
   geom_line(alpha = .8) + #geom_line(stat = "smooth", method = "loess", span = .1, linewidth = 1) +
   theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
-    labs(y = "EC (US/cm)", x = NULL) +
+    labs(y = "SpC (US/cm)", x = NULL) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm, color = Site)))
 
@@ -237,7 +265,8 @@ contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "S
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = DO_mgl), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = DO_mgl, color = Site)))
 
-(conttempplot <- ggplot(cdec_wide[is.na(cdec_wide$wtemp_c) == F & cdec_wide$wtemp_c < 50, ], aes(x = Datetime, y = wtemp_c, color = Site_no)) + 
+(conttempplot <- ggplot(cdec_wide[is.na(cdec_wide$wtemp_c) == F & cdec_wide$wtemp_c < 50 & 
+                                    cdec_wide$Site_no != "RCS", ], aes(x = Datetime, y = wtemp_c, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  contpal + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     labs(y = "Temperature (C)", x = NULL) +
@@ -478,13 +507,15 @@ cowplot::plot_grid(
 
 # filter var of interest; temp too variable (discrete data),
   # sal and TDS like SPC, pc like chlorop, zoop not significant and not at every site
-pc_in <- data.frame(wqp[,c("Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
-                "Turb_fnu", "CHL_ugl", "fdom_qsu", "week")])
-rownames(pc_in) <- paste(wqp$Site,wqp$RowID)
+pc_in <- data.frame(wqp[wqp$Date > as.Date("2025-11-15")& wqp$Date < as.Date("2026-04-01"),
+                        c("RowID","Site","Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
+                          "Turb_fnu", "CHL_ugl", "fdom_qsu", "week")])
+rownames(pc_in) <- paste(pc_in$Site, pc_in$RowID)
 pc_in <- drop_na(pc_in)
+pc_in <- pc_in[pc_in$RowID != 257,] ## dropping KLWW on day when flow was reversing
 
 # PCA calculation
-pc <- prcomp(subset(pc_in, select=-c(Sitefac, Date, week)), scale=T)
+pc <- prcomp(subset(pc_in, select=-c(RowID, Site,Sitefac, Date, week)), scale=T)
 pc$rotation <- -1*pc$rotation
 pc$x <- -1*pc$x
 
@@ -511,7 +542,7 @@ conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subse
   # tds and spc are basically the same, full overlap
 
 png("Output/Figures/YBLTE_wq_PCA_%02d.png",
-    height = 10, width = 10, units = "in", res = 1000, family = "serif")
+    height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
 
 (pcaplot <- ggplot(data = pc_score, aes())+
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
