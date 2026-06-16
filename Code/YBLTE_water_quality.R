@@ -90,7 +90,7 @@ sensor_codes <- data.frame(sensor = c("chla", "ec", "discharge_cfs", "fdom",
                                           25, 61, 62, 221,
                                           1))
 startdate <- "2025-10-1"
-enddate <- Sys.Date()
+enddate <- "2026-05-10"
 
 cdec <- data.frame()
 for(station in cdec_stations){
@@ -351,6 +351,25 @@ cowplot::plot_grid(
                    contchlplot,
                    align  = "v",
                    nrow = 8)
+
+dev.off()
+
+png("Output/Yolo_hydrographs_2026%03d.png", 
+    family = "serif", res = 500, height = 1.8, width = 14, units = "in")
+
+(contflowplot2_class <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC", "FRE") & 
+                                     is.na(cdec_wide$discharge_cfs) == F,], aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+    geom_ribbon(data = cdec_wide[cdec_wide$Site_no %in% c("FRE"),],
+                aes(ymax = discharge_cfs, ymin = 0), color = "slateblue4", fill = "slateblue4", alpha = .2) +
+    geom_line(alpha = .8, linewidth = .8) + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
+    geom_line(data = cdec_wide[cdec_wide$Site_no %in% c("LIS") & 
+                                 is.na(cdec_wide$discharge_cfs) == F,], alpha = .2) + animCol +
+    geom_vline(xintercept = c(as.POSIXct("2026-1-8"), as.POSIXct("2026-2-12"), as.POSIXct("2026-3-4"), as.POSIXct("2026-3-9")),
+               color = "yellow",
+               linetype = "dashed") +
+    theme_bw() + labs(y = "Discharge (cfs)", x = NULL) +
+    coord_cartesian(clip = "off",
+                    ylim = c(0, max(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC"), "discharge_cfs"], na.rm = T))))
 
 dev.off()
 
