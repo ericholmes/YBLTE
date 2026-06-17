@@ -151,6 +151,8 @@ cdec_wide <- rbind(cdec_wide, yff_cdec)
 ## Preliminary plotting ----
 dput(unique(wqp$Site))
 
+wqp$Date <-as.Date(wqp$Date)
+
 ###Spot measurements
 # heat map to see change over time and site variation
 # boxplots for more specific range/differences between sites
@@ -159,10 +161,13 @@ dput(unique(wqp$Site))
   geom_raster() + labs(x = "Week", y=NULL, fill = "Temp (C)") +
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
   theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
-
 (tempbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Temp)) + 
     geom_boxplot() + labs(x = NULL, y = "Temp (C)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+(tempplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Temp)) + 
+    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "Temp (C)") +
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b"))
 
 (doplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = DO_mgl)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "DO (mgl)") +
@@ -171,6 +176,10 @@ dput(unique(wqp$Site))
 (dobox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = DO_mgl)) + 
     geom_boxplot() + labs(x = NULL, y = "DO (mgl)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+(doplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = DO_mgl)) + 
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mgl)") +
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
 
 (spcplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = SPC_uscm)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "SPC (uscm)") +
@@ -179,6 +188,10 @@ dput(unique(wqp$Site))
 (spcbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = SPC_uscm)) + 
     geom_boxplot() + labs(x = NULL, y = "SPC (uscm)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+(spcplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = SPC_uscm)) + 
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (uscm)") +
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
 
 (turbplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Turb_fnu)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Turb (FNU)") +
@@ -187,6 +200,10 @@ dput(unique(wqp$Site))
 (turbbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Turb_fnu)) + 
     geom_boxplot() + labs(x = NULL, y = "Turb (FNU)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+(turbplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Turb_fnu)) + 
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Turb (FNU)") +
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
 
 (chlplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = CHL_ugl)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Chl (ugl)") +
@@ -195,6 +212,10 @@ dput(unique(wqp$Site))
 (chlbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = CHL_ugl)) + 
     geom_boxplot() + labs(x = NULL, y = "Chl (ugl)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+(chlplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = CHL_ugl)) + 
+    geom_tile(width = 8) + labs(x = NULL, y= NULL, fill = "Chl (ugl)") +
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
 
 (fdomplot <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = week, y = Sitefac, fill = fdom_qsu)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "FDOM (qsu)") +
@@ -203,6 +224,10 @@ dput(unique(wqp$Site))
 (fdombox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = fdom_qsu)) + 
     geom_boxplot() + labs(x = NULL, y = "FDOM (qsu)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+(fdomplotdate <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = Date, y = Sitefac, fill = fdom_qsu)) + 
+    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "FDOM (qsu)") +
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
 
 (zoopplot <- ggplot(wqp %>% drop_na(c(Sitefac, Zoop_score)), aes(x = week, y = Sitefac, fill = Zoop_score)) + 
     geom_raster() + labs(x = "Week", y=NULL, fill = "Zoop score") +
@@ -211,6 +236,10 @@ dput(unique(wqp$Site))
 (zoopbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Zoop_score)) + 
     geom_boxplot() + labs(x = NULL, y = "Zoop score") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+(zoopplotdate <- ggplot(wqp %>% drop_na(c(Sitefac, Zoop_score)), aes(x = Date, y = Sitefac, fill = Zoop_score)) + 
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Zoop score") +
+    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
 
 png("Output/Figures/YBLTE_Point_wq_%02d.png",
     height = 6, width = 7, units = "in", res = 1000, family = "serif")
@@ -227,15 +256,50 @@ png("Output/Figures/YBLTE_Point_wq_%02d.png",
 # merge heat maps
 cowplot::plot_grid(cowplot::plot_grid(zoopplot,doplot,spcplot,turbplot,chlplot,fdomplot,
                                       align  = "v", nrow = 3))
+
+cowplot::plot_grid(cowplot::plot_grid(zoopplotdate,doplotdate,spcplotdate,turbplotdate,chlplotdate,fdomplotdate,
+                                      align  = "v", nrow = 3))
 # merge box plots
 cowplot::plot_grid(cowplot::plot_grid(zoopbox,dobox,spcbox,turbbox,chlbox,fdombox,
                                       align  = "v", nrow = 3))
 dev.off()
 
+
+## Correlation plot --------------------------------------------------------
+
+# Select numeric WQ parameters
+wq_numeric <- wqp %>% 
+  select("Temp", "DO_mgl", "SPC_uscm","pH", "Turb_fnu", 
+         "PC_ugl", "CHL_ugl", "fdom_qsu", "Zoop_score") %>% 
+  drop_na()
+dput(colnames(wqp))
+
+# Compute correlation matrix
+cor_mat <- cor(wq_numeric, use = "pairwise.complete.obs")
+
+# Convert to long format
+cor_df <- as.data.frame(cor_mat) %>%
+  rownames_to_column("Var1") %>%
+  pivot_longer(-Var1, names_to = "Var2", values_to = "correlation")
+
+# Plot
+ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "red",
+    mid = "beige",
+    high = "blue",
+    midpoint = 0,
+    name = "Correlation", limits = c(-1, 1)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(fill = "Correlation", x = NULL, y = NULL)
+
+
 #dput(RColorBrewer::brewer.pal(9, "Set1"))
 c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999") 
 
-###Continuous gauge data
+## Continuous gauge data ----
 
 contpal <-  scale_color_manual(values = c("LIS" = RColorBrewer::brewer.pal(8, "Set1")[1], 
                                           "RCS" = RColorBrewer::brewer.pal(8, "Set1")[5], 
