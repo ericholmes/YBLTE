@@ -25,6 +25,8 @@ chinook$wyday <- chinook$sample_date - as.POSIXct("2025-10-01", tz = "UTC")
 chinook$take <- ifelse(chinook$direct_take, "D",
                        ifelse(chinook$indirect_take, "I", F))
 
+chinook$bridge <- ifelse(chinook$station_code %in% c("CNW", "KNG3"), 'T', 'F')
+
 chinook <- chinook[is.na(chinook$fork_length) == F,]
 
 # table -------------------------------------------------------------------
@@ -81,12 +83,15 @@ ggplot(chinook, aes(x = wyday)) + theme_bw() +
            angle = c(20, 29, 34, 46)) +
   theme(legend.position = "bottom", text = element_text(family = "serif")) +
   geom_point(data = chinook,#[chinook$take %in% c("D", "Y"),],
-             aes(x = wydayjitter, y = fork_length, color = take), size = 3) +
+             aes(x = wydayjitter, y = fork_length, color = take, 
+                 shape = bridge), size = 2, stroke = 2) +
   # geom_point(data = chinook[chinook$take %in% "I",],
   #            aes(x = wydayjitter, y = fork_length, color = take), size = 3) +
   geom_point(aes(x = wydayjitter, y = fork_length)) +
-  scale_color_manual(values = c('D' = "orange", 'I' = "red"), 
+  scale_color_manual(values = c('D' = "orange3", 'I' = "red"), 
                      labels = c("Direct", "Indirect"), name = "Take") +
+  scale_shape_manual(values = c('F' = 19, 'T' = 4), 
+                     labels = c("Non-bridge", "Bridge Group"), name = NULL) +
   labs(x = NULL, y = "Fork Length (mm)", title = "Fisher LAD class for YBLTE Fish")
 
 dev.off()

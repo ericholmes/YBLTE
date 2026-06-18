@@ -608,7 +608,7 @@ conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subse
 png("Output/Figures/YBLTE_wq_PCA_%02d.png",
     height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
 
-(pcaplot <- ggplot(data = pc_score, aes())+
+(pcaplot <- ggplot()+
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
   geom_polygon(data=conv_hull, aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
                alpha=0.1)+
@@ -625,7 +625,7 @@ png("Output/Figures/YBLTE_wq_PCA_%02d.png",
   theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() + 
   scale_shape_manual(values = c(1:14)))
 
-(pcaplot <- ggplot(data = pc_score, aes())+
+(pcaplot <- ggplot()+
     geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
     geom_polygon(data=conv_hull, 
                  aes(x=PC1, y=PC2, fill=Sitefac),
@@ -644,6 +644,55 @@ png("Output/Figures/YBLTE_wq_PCA_%02d.png",
          y=paste0("PC2 (", pc2_v, "% Variance)"),
          color="Site", fill="Site", shape="Site")+
     theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() + 
+    scale_shape_manual(values = c(1:14)))
+
+# plot for poster
+# highlight change in STTD, numbers and arrows
+# color code each point to be dominating tributary
+pc_score$weekDate <- floor_date(pc_score$Date, "week")
+pc_score <- pc_score[order(pc_score$Sitefac, pc_score$week),]
+pc_score$pc1_next <- c(pc_score$PC1[-1], NA)
+pc_score$pc2_next <- c(pc_score$PC2[-1], NA)
+
+pc_cdec <- cdec_wide %>% subset(select=c(Site_no, Datetime, discharge_cfs)) %>% 
+  drop_na(discharge_cfs) %>% filter(Site_no %in% c("RCS", "FRE", "CCY")) %>% 
+  mutate(Site_no = factor(Site_no, levels=c("RCS", "FRE", "CCY")))
+pc_cdec$weekDate <- floor_date(pc_cdec$Datetime, "week")
+pc_cdec <- pc_cdec %>% group_by(weekDate, Site_no) %>%
+  summarize(discharge_total = sum(discharge_cfs)) %>% 
+  group_by(weekDate) %>% filter(discharge_total == max(discharge_total))
+
+pc_cdec <- left_join(pc_score, pc_cdec, by="weekDate")
+
+pc_cdec$Site_no <- factor(pc_cdec$Site_no, )
+
+(pcaplot <- ggplot()+
+    geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
+                aes(x=PC1, y=PC2, fill=Sitefac), color=NA,
+                alpha=0.2)+
+    geom_point(data=pc_cdec, 
+               aes(x=PC1, y=PC2, color=Site_no, shape=Sitefac))+
+    geom_point(data=pc_cdec %>% filter(Sitefac %in% c("SB4", "STTD", "TEW")), 
+                aes(x=PC1, y=PC2, color=Site_no, shape=Sitefac), size=5)+
+    # geom_segment(data=pc_cdec %>% filter(Sitefac == "STTD"),
+    #              aes(x=PC1, y=PC2, xend=pc1_next, yend=pc2_next),
+    #              alpha=0.5, color="black", arrow=arrow())+
+    # geom_polygon(data=conv_hull, 
+    #              aes(x=PC1, y=PC2, fill=Sitefac),
+    #              alpha=0.0, linewidth = NULL)+
+    geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
+                 alpha=0.5, color="black", linewidth=0.8)+
+    ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
+                              fill="dimgrey", color="white", 
+                              segment.color="dimgrey", alpha=0.8,
+                              label=rownames(pc_load_scaled), seed=25)+
+    # geom_text(data = pc_cdec %>% filter(Sitefac == "STTD"), 
+    #           aes(x=PC1, y=PC2, label = week), size = 4, vjust = 1, hjust = 1)+
+    labs(title = "Point Water Quality PCA",
+         x=paste0("PC1 (", pc1_v, "% Variance)"),
+         y=paste0("PC2 (", pc2_v, "% Variance)"),
+         color="Highest Flow", fill="Source", shape="Site")+
+    theme_bw()+ animCol + animFill + guides(size="none")+
     scale_shape_manual(values = c(1:14)))
 
 dev.off()
