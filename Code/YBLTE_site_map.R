@@ -189,7 +189,8 @@ ggplot() +
   geom_sf(data = roads_filtered, color = "grey60") +
   ggnewscale::new_scale_fill() + theme_bw() +
   
-  geom_sf(data = proj_pts, aes(shape = Sitetype, fill = Sitetype), size = 4, linewidth = 2) +
+  geom_sf(data = proj_pts %>% filter(Sampletype=="main"), 
+          aes(shape = Sitetype, fill = Sitetype), size = 4, linewidth = 2) +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
   
@@ -205,7 +206,8 @@ ggplot() +
   geom_text_repel(aes(x = -121.63, y = 38.825, label = "Feather\nRiver"), 
                    data = NULL, color = "#1A3057", size = 3, fontface = "bold",
                    bg.color = "white", bg.r = 0.1, force = 0, hjust = "left") +
-  geom_text_repel(data = proj_pts, aes(geometry = geometry, label = Site_id), 
+  geom_text_repel(data = proj_pts %>% filter(Sampletype=="main"), 
+                  aes(geometry = geometry, label = Site_id), 
                    stat = "sf_coordinates", size = 3, bg.color = alpha("white", 0.6),
                    color = "black", bg.r = 0.1, fontface = "bold") +
   coord_sf(xlim = c(-121.9, -121.4), ylim = c(38.15, 38.85), expand = FALSE) +
