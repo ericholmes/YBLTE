@@ -1,6 +1,8 @@
 # Yolo LTE hydrology and water quality conditions
 ## Load libraries ----
 library(tidyverse)
+library(sf)
+library(plotly)
 
 ## Load functions ----
 source("Code/YBLTE_useful_functions.R")
@@ -696,6 +698,176 @@ pc_cdec$Site_no <- factor(pc_cdec$Site_no, )
     scale_shape_manual(values = c(1:14)))
 
 dev.off()
+
+##3D plot:
+
+tribs <- c("CCSYB", "KLWW", "FWBN")
+
+# Compute convex hull area for each tributary
+trib_stats <- pc_score %>%
+  filter(Sitefac %in% tribs) %>%
+  group_by(Sitefac) %>%
+  summarise(
+    geometry = st_convex_hull(st_union(st_as_sf(., coords = c("PC1","PC2"), crs = 4326)))
+  ) %>%
+  mutate(
+    area = as.numeric(st_area(geometry)),
+    radius = sqrt(area / pi),   # convert area to equivalent circle radius
+    cx = st_coordinates(st_centroid(geometry))[1],
+    cy = st_coordinates(st_centroid(geometry))[2]
+  )
+
+make_cylinder <- function(cx, cy, r, zmin, zmax, n = 60) {
+  theta <- seq(0, 2*pi, length.out = n)
+  
+  # circles
+  x_bottom <- cx + r * cos(theta)
+  y_bottom <- cy + r * sin(theta)
+  z_bottom <- rep(zmin, n)
+  
+  x_top <- cx + r * cos(theta)
+  y_top <- cy + r * sin(theta)
+  z_top <- rep(zmax, n)
+  
+  # combine vertices
+  x <- c(x_bottom, x_top)
+  y <- c(y_bottom, y_top)
+  z <- c(z_bottom, z_top)
+  
+  # build side faces
+  i <- c()
+  j <- c()
+  k <- c()
+  
+  for (t in 1:(n-1)) {
+    # bottom triangle
+    i <- c(i, t)
+    j <- c(j, t+1)
+    k <- c(k, t + n)
+    
+    # top triangle
+    i <- c(i, t+1)
+    j <- c(j, t+1 + n)
+    k <- c(k, t + n)
+  }
+  
+  # close the cylinder
+  i <- c(i, n, 1, n)
+  j <- c(j, 1, 1 + n, 1 + n)
+  k <- c(k, n + n, n + 1, n + n)
+  
+  list(x = x, y = y, z = z, i = i-1, j = j-1, k = k-1)
+}
+
+
+tribs <- c("CCSYB", "KLWW", "FWBN")
+trib_stats <- pc_score %>%
+  filter(Sitefac %in% tribs) %>%
+  group_by(Sitefac) %>%
+  group_modify(~{
+    pts <- st_as_sf(.x, coords = c("PC1","PC2"), crs = NA)
+    
+    hull <- st_convex_hull(st_combine(pts))   # <-- correct way
+    
+    tibble(
+      geometry = hull,
+      area = as.numeric(st_area(hull)),
+      radius = sqrt(as.numeric(st_area(hull)) / pi),
+      cx = st_coordinates(st_centroid(hull))[1],
+      cy = st_coordinates(st_centroid(hull))[2]
+    )
+  })
+
+p <- plot_ly() %>%
+  add_trace(
+    data = pc_score,
+    x = ~PC1, y = ~PC2, z = ~week,
+    color = ~Sitefac,
+    type = "scatter3d",
+    mode = "markers",
+    marker = list(size = 3)
+  )
+p <- p %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "PC1"),
+      yaxis = list(title = "PC2"),
+      zaxis = list(title = "Week"),
+      aspectmode = "manual",
+      aspectratio = list(
+        x = 2,   # widen x axis
+        y = 2,   # widen y axis
+        z = 0.7  # compress z axis
+      )
+    )
+  )
+
+for(i in 1:nrow(trib_stats)) {
+  t <- trib_stats[i, ]
+  
+  cyl <- make_cylinder(
+    cx = t$cx,
+    cy = t$cy,
+    r  = t$radius,
+    zmin = min(pc_score$week),
+    zmax = max(pc_score$week)
+  )
+  
+  p <- p %>%
+    add_trace(
+      x = cyl$x,
+      y = cyl$y,
+      z = cyl$z,
+      i = cyl$i,
+      j = cyl$j,
+      k = cyl$k,
+      type = "mesh3d",
+      opacity = 0.25,
+      color = t$Sitefac,
+      name = paste(t$Sitefac, "region")
+    )
+  
+}
+
+p <- p %>%
+  layout(
+    title = "3D PCA with Tributary Cylinders",
+    scene = list(
+      xaxis = list(title = "PC1"),
+      yaxis = list(title = "PC2"),
+      zaxis = list(title = "Week")
+    )
+  )
+
+p <- p %>%
+  add_trace(
+    x = cyl$x,
+    y = cyl$y,
+    z = cyl$z,
+    type = "mesh3d",
+    opacity = 0.25,
+    color = t$Sitefac,
+    name = paste(t$Sitefac, "region")
+  )
+for(s in c("STTD", "YBLR4")) {
+  df <- pc_score %>%
+    filter(Sitefac == s) %>%
+    arrange(week)
+  
+  p <- p %>%
+    add_trace(
+      data = df,
+      x = ~PC1,
+      y = ~PC2,
+      z = ~week,
+      type = "scatter3d",
+      mode = "lines",
+      line = list(width = 4),
+      name = paste(s, "trajectory"),
+      showlegend = TRUE
+    )
+}
+p
 
 # testing animation for pca
 library(gganimate)
