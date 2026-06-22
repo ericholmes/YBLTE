@@ -849,7 +849,7 @@ p <- p %>%
     color = t$Sitefac,
     name = paste(t$Sitefac, "region")
   )
-for(s in c("STTD", "YBLR4")) {
+for(s in c("STTD", "LIS", "AL0")) {
   df <- pc_score %>%
     filter(Sitefac == s) %>%
     arrange(week)
