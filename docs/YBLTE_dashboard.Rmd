@@ -315,6 +315,13 @@ p
 
 ```
 
+Dynamic Time Warping Analysis
+=====================================
+
+```{r}
+knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_DTW_clust03.png")
+```
+
 End member mixing analysis
 =====================================
 
