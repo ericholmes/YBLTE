@@ -16,9 +16,10 @@ library(flexdashboard)
 library(readxl)
 library(tidyverse)
 library(dygraphs)
+library(plotly)
 
 # Load spatial objects from your saved Rdata file
-load("../data/spatial/Yolo_map_data.Rdata")
+load("../Data/spatial/Yolo_map_data.Rdata")
 
 # Load project points
 proj_raw <- read_excel("../Data/tabular/YBLTE_sites.xlsx")
@@ -146,6 +147,179 @@ PCA animation
 Water‑Quality PCA
 ```{r}
 knitr::include_graphics("../Output/Figures/pca_flow_horizontal2.gif")
+```
+
+3D PCA Cylinders
+=====================================
+
+```{r}
+# --- Load or prepare pc_score and trib_stats before this chunk ---
+# PCA for point wq ----
+wqp <- readxl::read_excel("../Data/tabular/YBLTE_point_wq.xlsx")
+
+wqp <- filter(wqp, Sample_Type=="zoop")
+
+# for plotting, not listed sites were dropped (sitefac is NA)
+wqp$Sitefac <- factor(wqp$Site, levels = c("FWBN", "FW1", 
+                                           "KLWW","KNG3", "CCSYB",
+                                           "CNW","RD22", 
+                                           "YBLR4", "SB4", #"I80", 
+                                           "AL0","LIS", "STTD", "TEW","TER"))
+
+
+wqp$week <- as.integer(format(wqp$Date, format = "%W"))
+wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
+wqp$weekchr <- as.character(wqp$week)
+wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
+
+wqp$Zoop_score <- as.numeric(wqp$Zoop_score)
+# filter var of interest; temp too variable (discrete data),
+  # sal and TDS like SPC, pc like chlorop, zoop not significant and not at every site
+pc_in <- data.frame(wqp[wqp$Date > as.Date("2025-11-15")& wqp$Date < as.Date("2026-04-01"),
+                        c("RowID","Site","Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
+                          "Turb_fnu", "CHL_ugl", "fdom_qsu", "week")])
+rownames(pc_in) <- paste(pc_in$Site, pc_in$RowID)
+pc_in <- drop_na(pc_in)
+pc_in <- pc_in[pc_in$RowID != 257,] ## dropping KLWW on day when flow was reversing
+
+# PCA calculation
+pc <- prcomp(subset(pc_in, select=-c(RowID, Site,Sitefac, Date, week)), scale=T)
+pc$rotation <- -1*pc$rotation
+pc$x <- -1*pc$x
+
+# get variance per PC
+pc_var <- pc$sdev^2 / sum(pc$sdev^2) # PC 1-4 explain most variance (36%, 28, 14, 9)
+pc1_v <- round(pc_var[1] * 100, 1)
+pc2_v <- round(pc_var[2] * 100, 1)
+
+# create new df for plotting scores
+pc_score <- as.data.frame(pc$x[, 1:2])
+pc_score$Sitefac <- pc_in$Sitefac
+pc_score$Date <- pc_in$Date
+pc_score$week <- pc_in$week
+
+# df for plotting each var within the PC
+pc_load <- as.data.frame(pc$rotation[, 1:2])
+scaling_factor <- 1.2 * max(abs(pc_score[, 1:2]))
+pc_load_scaled <- pc_load*scaling_factor
+
+pc_score$weekDate <- floor_date(pc_score$Date, "week")
+pc_score <- pc_score[order(pc_score$Sitefac, pc_score$week),]
+pc_score$pc1_next <- c(pc_score$PC1[-1], NA)
+pc_score$pc2_next <- c(pc_score$PC2[-1], NA)
+
+# calculate convex hull by site
+conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subset(select=-c(week))
+
+
+tribs <- c("CCSYB", "KLWW", "FWBN")
+
+trib_stats <- pc_score %>%
+  filter(Sitefac %in% tribs) %>%
+  group_by(Sitefac) %>%
+  group_modify(~{
+    pts <- st_as_sf(.x, coords = c("PC1","PC2"), crs = NA)
+    hull <- st_convex_hull(st_combine(pts))
+    tibble(
+      geometry = hull,
+      area = as.numeric(st_area(hull)),
+      radius = sqrt(as.numeric(st_area(hull)) / pi),
+      cx = st_coordinates(st_centroid(hull))[1],
+      cy = st_coordinates(st_centroid(hull))[2]
+    )
+  })
+
+make_cylinder <- function(cx, cy, r, zmin, zmax, n = 60) {
+  theta <- seq(0, 2*pi, length.out = n)
+  x_bottom <- cx + r * cos(theta)
+  y_bottom <- cy + r * sin(theta)
+  z_bottom <- rep(zmin, n)
+  x_top <- cx + r * cos(theta)
+  y_top <- cy + r * sin(theta)
+  z_top <- rep(zmax, n)
+  x <- c(x_bottom, x_top)
+  y <- c(y_bottom, y_top)
+  z <- c(z_bottom, z_top)
+  i <- c(); j <- c(); k <- c()
+  for (t in 1:(n-1)) {
+    i <- c(i, t, t+1)
+    j <- c(j, t+1, t+1+n)
+    k <- c(k, t+n, t+n)
+  }
+  i <- c(i, n, 1, n)
+  j <- c(j, 1, 1+n, 1+n)
+  k <- c(k, n+n, n+1, n+n)
+  list(x = x, y = y, z = z, i = i-1, j = j-1, k = k-1)
+}
+
+p <- plot_ly() %>%
+  add_trace(
+    data = pc_score,
+    x = ~PC1, y = ~PC2, z = ~week,
+    color = ~Sitefac,
+    type = "scatter3d",
+    mode = "markers",
+    marker = list(size = 3)
+  ) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "PC1"),
+      yaxis = list(title = "PC2"),
+      zaxis = list(title = "Week"),
+      aspectmode = "manual",
+      aspectratio = list(x = 2, y = 2, z = 0.7)
+    )
+  )
+
+for(i in 1:nrow(trib_stats)) {
+  t <- trib_stats[i, ]
+  cyl <- make_cylinder(
+    cx = t$cx,
+    cy = t$cy,
+    r  = t$radius,
+    zmin = min(pc_score$week),
+    zmax = max(pc_score$week)
+  )
+  p <- p %>%
+    add_trace(
+      x = cyl$x,
+      y = cyl$y,
+      z = cyl$z,
+      i = cyl$i,
+      j = cyl$j,
+      k = cyl$k,
+      type = "mesh3d",
+      opacity = 0.25,
+      color = t$Sitefac,
+      name = paste(t$Sitefac, "region")
+    )
+}
+
+for(s in unique(pc_score$Sitefac)) {
+  df <- pc_score %>% filter(Sitefac == s) %>% arrange(week)
+  p <- p %>%
+    add_trace(
+      data = df,
+      x = ~PC1,
+      y = ~PC2,
+      z = ~week,
+      type = "scatter3d",
+      mode = "lines",
+      line = list(width = 4),
+      name = paste(s, "trajectory"),
+      showlegend = TRUE
+    )
+}
+
+p
+
+```
+
+Dynamic Time Warping Analysis
+=====================================
+
+```{r}
+knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_DTW_clust03.png")
 ```
 
 End member mixing analysis
