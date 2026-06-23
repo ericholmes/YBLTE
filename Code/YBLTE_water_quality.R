@@ -1,4 +1,4 @@
-# Yolo LTE hydrology and water quality conditions
+# Yolo LTE hydrology and water quality conditions ⭐ ⭐ ⭐ ⭐ ⭐ 
 ## Load libraries ----
 library(tidyverse)
 library(gganimate)
@@ -608,26 +608,29 @@ cowplot::plot_grid(
 
 ## PCA for point wq ----
 
-# filter var of interest; temp too variable (discrete data),
-  # sal and TDS like SPC, pc like chlorop, zoop not significant and not at every site
+### Cleaning wqp to plug into PCA
+
+# Filter var of interest; temp too variable (discrete data),
+  # sal and TDS like SPC, pc like chlorop, zoop not at every site
 pc_in <- data.frame(wqp[wqp$Date > as.Date("2025-11-15")& wqp$Date < as.Date("2026-04-01"),
                         c("RowID","Site","Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
                           "Turb_fnu", "CHL_ugl", "fdom_qsu", "week")])
+
 rownames(pc_in) <- paste(pc_in$Site, pc_in$RowID)
 pc_in <- drop_na(pc_in)
 pc_in <- pc_in[pc_in$RowID != 257,] ## dropping KLWW on day when flow was reversing
 
-# PCA calculation
+### PCA calculations
 pc <- prcomp(subset(pc_in, select=-c(RowID, Site,Sitefac, Date, week)), scale=T)
 pc$rotation <- -1*pc$rotation
 pc$x <- -1*pc$x
 
-# get variance per PC
+# Get variance per PC
 pc_var <- pc$sdev^2 / sum(pc$sdev^2) # PC 1-4 explain most variance (36%, 28, 14, 9)
 pc1_v <- round(pc_var[1] * 100, 1)
 pc2_v <- round(pc_var[2] * 100, 1)
 
-# create new df for plotting scores
+# Create new df for plotting scores
 pc_score <- as.data.frame(pc$x[, 1:2])
 pc_score$Sitefac <- pc_in$Sitefac
 pc_score$Date <- pc_in$Date
@@ -638,16 +641,13 @@ pc_load <- as.data.frame(pc$rotation[, 1:2])
 scaling_factor <- 1.2 * max(abs(pc_score[, 1:2]))
 pc_load_scaled <- pc_load*scaling_factor
 
-# calculate convex hull by site
+# Calculate convex hull by site
 conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subset(select=-c(week))
 
-# plot, need to adjust aesthetics
-  # tds and spc are basically the same, full overlap
+### Plotting PCA
 
-png("Output/Figures/YBLTE_wq_PCA_%02d.png",
-    height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
-
-(pcaplot <- ggplot()+
+# All sites with conv hulls
+(pcaplot1 <- ggplot()+
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
   geom_polygon(data=conv_hull, aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
                alpha=0.1)+
@@ -661,10 +661,11 @@ png("Output/Figures/YBLTE_wq_PCA_%02d.png",
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
        color="Site", fill="Site", shape="Site")+
-  theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() + 
+  theme_bw()+ animCol+animFill+
   scale_shape_manual(values = c(1:14)))
 
-(pcaplot <- ggplot()+
+# All sites with only tributary conv hulls
+(pcaplot2 <- ggplot()+
     geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
     geom_polygon(data=conv_hull, 
                  aes(x=PC1, y=PC2, fill=Sitefac),
@@ -682,12 +683,10 @@ png("Output/Figures/YBLTE_wq_PCA_%02d.png",
          x=paste0("PC1 (", pc1_v, "% Variance)"),
          y=paste0("PC2 (", pc2_v, "% Variance)"),
          color="Site", fill="Site", shape="Site")+
-    theme_bw()+ scale_color_viridis_d()+ scale_fill_viridis_d() + 
+    theme_bw()+ animCol+ animFill + 
     scale_shape_manual(values = c(1:14)))
 
-# plot for poster
-# highlight change in STTD, numbers and arrows
-# color code each point to be dominating tributary
+# Color code each point to be dominating tributary, highlights SB4, STTD, TEW
 pc_score$weekDate <- floor_date(pc_score$Date, "week")
 pc_score <- pc_score[order(pc_score$Sitefac, pc_score$week),]
 pc_score$pc1_next <- c(pc_score$PC1[-1], NA)
@@ -705,7 +704,7 @@ pc_cdec <- left_join(pc_score, pc_cdec, by="weekDate")
 
 pc_cdec$Site_no <- factor(pc_cdec$Site_no, )
 
-(pcaplot <- ggplot()+
+(pcaplot3 <- ggplot()+
     geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
                 aes(x=PC1, y=PC2, fill=Sitefac), color=NA,
                 alpha=0.2)+
@@ -734,9 +733,15 @@ pc_cdec$Site_no <- factor(pc_cdec$Site_no, )
     theme_bw()+ animCol + animFill + guides(size="none")+
     scale_shape_manual(values = c(1:14)))
 
+# Save plot
+png("Output/Figures/YBLTE_wq_PCA_%02d.png",
+    height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
+
+pcaplot2
+
 dev.off()
 
-##3D plot:
+### 3D plot, considers time, highlights STTD and YBLR4
 
 tribs <- c("CCSYB", "KLWW", "FWBN")
 
@@ -796,8 +801,6 @@ make_cylinder <- function(cx, cy, r, zmin, zmax, n = 60) {
   list(x = x, y = y, z = z, i = i-1, j = j-1, k = k-1)
 }
 
-
-tribs <- c("CCSYB", "KLWW", "FWBN")
 trib_stats <- pc_score %>%
   filter(Sitefac %in% tribs) %>%
   group_by(Sitefac) %>%
@@ -904,33 +907,30 @@ for(s in c("STTD", "YBLR4")) {
       showlegend = TRUE
     )
 }
+
 p
 
-# testing animation for pca
+## Animations ----
 
-
-# pca plots, animated by week (starts at 2 where no missing data)
+### PCA animation plots, will go by week (starts at 2 where no missing data)
 pcaplots <- ggplot()+
-  # conv hulls for tributaries
+  # Conv hulls for tributaries
   geom_polygon(data=conv_hull%>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")), 
                aes(x=PC1, y=PC2, fill=Sitefac), alpha=0.3)+
-  # contributing variables to PC (lines)
+  # Contributing variables to PC (lines)
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
                alpha=0.2, color="black", linewidth=0.8)+
-  # background points
+  # Background points
   geom_point(data=pc_score%>% subset(select=-c(week)), aes(x=PC1, y=PC2, 
       color=Sitefac, shape=Sitefac), alpha=0.4)+
-  geom_path(data=pc_score[pc_score$Sitefac %in% "STTD",] %>% 
-               subset(select=-c(week)), 
-             aes(x=PC1, y=PC2, color=Sitefac), alpha=0.4, linewidth= 1.2)+
-  # variable labels
+  # Variable labels
   ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
                             fill="dimgrey", color="white",
                             segment.color="dimgrey", alpha=0.5,
                             label=rownames(pc_load_scaled), seed=25)+
-  # animated points, sites of interest are bigger
+  # Animated points, sites of interest are bigger
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac, 
-             size=ifelse(Sitefac %in% c("FWBN", "KLWW", "CCSYB", "STTD"), 2, 1)), stroke=2,
+             size=ifelse(Sitefac %in% c("FWBN", "KLWW", "CCSYB"), 2, 1)), stroke=2,
              alpha = 0.7)+
   # stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
   #                subset(select = -c(week)),
@@ -942,35 +942,66 @@ pcaplots <- ggplot()+
   theme_bw()+ animCol+ animFill +
   scale_shape_manual(values = c(2:15))
 
+# Highlights STTD
+pcaplots_sttd <- ggplot()+
+  # Conv hulls for tributaries
+  geom_polygon(data=conv_hull%>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")), 
+               aes(x=PC1, y=PC2, fill=Sitefac), alpha=0.3)+
+  # Contributing variables to PC (lines)
+  geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
+               alpha=0.2, color="black", linewidth=0.8)+
+  # Background points
+  geom_point(data=pc_score%>% subset(select=-c(week)), aes(x=PC1, y=PC2, 
+                                                           color=Sitefac, shape=Sitefac), alpha=0.4)+
+  # Tracks path of STTD
+  geom_path(data=pc_score[pc_score$Sitefac %in% "STTD",] %>% 
+              subset(select=-c(week)), 
+            aes(x=PC1, y=PC2, color=Sitefac), alpha=0.4, linewidth= 1.2)+
+  # Variable labels
+  ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
+                            fill="dimgrey", color="white",
+                            segment.color="dimgrey", alpha=0.5,
+                            label=rownames(pc_load_scaled), seed=25)+
+  # Animated points, sites of interest are bigger
+  geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac, 
+                                size=ifelse(Sitefac %in% c("FWBN", "KLWW", "CCSYB", "STTD"), 2, 1)), stroke=2,
+             alpha = 0.7)+
+  # stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
+  #                subset(select = -c(week)),
+  #              aes(x = PC1, y = PC2, color = Sitefac)) +  
+  labs(title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
+       x=paste0("PC1 (", pc1_v, "% Variance)"),
+       y=paste0("PC2 (", pc2_v, "% Variance)"),
+       color="Site", shape="Site")+guides(fill = "none", size = "none")+
+  theme_bw()+ animCol+ animFill +
+  scale_shape_manual(values = c(2:15))
+
+# Highlights LEBLS
 pcaplots_lebls <- ggplot()+
-  # convex hulls for tributaries
+  # Convex hulls for tributaries
   geom_polygon(
     data = conv_hull %>% filter(Sitefac %in% c("FWBN","KLWW","CCSYB")),
     aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.3
   ) +
-  
-  # contributing variables to PC (lines)
+  # Contributing variables to PC (lines)
   geom_segment(
     data = pc_load_scaled,
     aes(x = 0, y = 0, xend = PC1, yend = PC2),
     alpha = 0.2, color = "black", linewidth = 0.8
   ) +
-  
-  # background points
+  # Background points
   geom_point(
     data = pc_score %>% subset(select = -c(week)),
     aes(x = PC1, y = PC2, color = Sitefac, shape = Sitefac),
     alpha = 0.4
   ) +
-  
-  # ⭐ UPDATED: track SB4 + YBLR4 instead of STTD
+  # Tracks paths of SB4 + YBLR4 
   geom_path(
     data = pc_score[pc_score$Sitefac %in% c("SB4","YBLR4"),] %>% subset(select = -c(week)),
     aes(x = PC1, y = PC2, color = Sitefac),
     alpha = 0.6, linewidth = 1.4
   ) +
-  
-  # variable labels
+  # Variable labels
   ggrepel::geom_label_repel(
     data = pc_load_scaled,
     aes(x = PC1, y = PC2),
@@ -978,8 +1009,6 @@ pcaplots_lebls <- ggplot()+
     segment.color = "dimgrey", alpha = 0.5,
     label = rownames(pc_load_scaled), seed = 25
   ) +
-  
-  # ⭐ UPDATED: highlight SB4 + YBLR4 as large points
   geom_point(
     data = pc_score,
     aes(
@@ -988,7 +1017,6 @@ pcaplots_lebls <- ggplot()+
     ),
     stroke = 2, alpha = 0.7
   ) +
-  
   labs(
     title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
     x = paste0("PC1 (", pc1_v, "% Variance)"),
@@ -1000,9 +1028,14 @@ pcaplots_lebls <- ggplot()+
   scale_shape_manual(values = c(2:15))
 
 
-# animate pca plot
+# Animate PCA plots
 pcgif <- animate(
   pcaplots + transition_time(week) + enter_fade() + exit_fade(),
+  height = 500, width = 600, fps = 10
+)
+
+pcgif_sttd <- animate(
+  pcaplots_sttd + transition_time(week) + enter_fade() + exit_fade(),
   height = 500, width = 600, fps = 10
 )
 
@@ -1011,9 +1044,12 @@ pcgif_lebls <- animate(
   height = 500, width = 600, fps = 10
 )
 
-# stage plots, animated by date (should line up with pca plots because same time frame)
+### Stage plots, animated by date (lines up with PCA plots because same time frame)
+
+# Get stage for tributaries in same time frame as PCA
 stage_in_time <- cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]%>% 
   filter(between(Datetime, min(pc_score$Date),max(pc_score$Date)))
+
 stageplot <- ggplot(stage_in_time,
                      aes(x = Datetime, y = stage_ft, color = Sitefac)) +
     # add extra line to RCS to differentiate better
@@ -1030,61 +1066,61 @@ stageplot <- ggplot(stage_in_time,
     animCol +
     theme_bw() + labs(, y = "Stage (ft)", x = NULL, color = "Site")
 
-# animate stage plot
+# Animate stage plot
 stggif <- animate(
   stageplot+transition_reveal(Datetime),
   height=400, width=600, fps = 10)
 
-# flow plots, animated by date (should line up with pca plots because same time frame)
+### Flow plots, animated by date
 
-# get flow for tributaries in same time frame as pca
+# Get flow for tributaries in same time frame as PCA
 flow_in_time <- cdec_wide %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC")) %>% 
   filter(between(Datetime, min(pc_score$Date), max(pc_score$Date))) %>% drop_na(discharge_cfs)
 
-# flow plot raw
+# Flow plot raw
 (tribflowplot1 <- ggplot(flow_in_time, 
                         aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
     geom_line() + animCol +
     theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL))
 
-# edited flow plot
+# Edited flow plot, allows FRE to go out of frame for other details
 (tribflowplot2 <- ggplot(flow_in_time, 
                          aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
     geom_line() + animCol + animFill +
-    # text for when FRE is out of frame
+    # Text for when FRE is out of frame
     geom_text(data = flow_in_time %>% filter(Site_no=="FRE"),
              aes(x = as.POSIXct("2025-12-01"),
              y = max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs),
              label = ifelse(discharge_cfs>max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs),
                             paste0("FRE at ", discharge_cfs), "")), show.legend = F) +
-    # fill under line
+    # Fill under line
     geom_ribbon(aes(ymin=min(discharge_cfs),ymax=discharge_cfs, fill=Site_no), 
                 alpha=0.1, outline.type="lower") +
-    # frame limits, allow FRE to break out of frame
+    # Frame limits, allow FRE to break out of frame
     coord_cartesian(ylim=c(min(flow_in_time$discharge_cfs), 
         max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs)), clip = "off") +
     theme_bw() + labs(title = "Tributary Flow", y = "Discharge (cfs)", x = NULL))
 
-# plotting for percent flow
+# Plotting percent flow
 flow_in_time$Date <- as.Date(flow_in_time$Datetime)
 flow_in_time$Site_no <- factor(flow_in_time$Site_no, levels = c("RCS", "FRE", "CCY", "PTC"))
 
-# if negative flow, set to 0 (in theory, not contributing)
+# If negative flow, set to 0 (in theory, not contributing)
 flow_zero <- flow_in_time
 flow_zero[flow_zero$discharge_cfs<0, 'discharge_cfs'] <- 0
 
-# percent flow, get daily median per group then divide by sum of daily medians
+# Percent flow, get daily median per group then divide by sum of daily medians
 flow_perc <- flow_zero %>% group_by(Date, Site_no) %>% 
   summarize(median_flow = median(discharge_cfs)) %>% 
   group_by(Date) %>% 
   mutate(sumflow = sum(median_flow), percflow = 100*median_flow/sumflow)
 
-# percent flow plot, stacked bar plot (daily increments)
+# Percent flow plot, stacked bar plot (daily increments)
 pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
   geom_bar(stat = "identity", alpha = 0.9) + animFill +
   labs(x = NULL, y = "Percent Flow") + theme_bw()
 
-# animate flow and percent flow plots
+# Animate flow and percent flow plots
 flowgif <- animate(
   tribflowplot2+transition_reveal(Datetime),
   height=300, width=600, fps = 10)
@@ -1092,7 +1128,7 @@ pflowgif <- animate(
   pflowplot+transition_states(Date)+shadow_mark(past=T),
   height=300, width=600, fps = 10)
 
-# combine pca and flow animations
+### Combine pca and flow animations
 pcgif <- image_read(pcgif)
 flowgif <- image_read(flowgif)
 pflowgif <- image_read(pflowgif)
@@ -1109,15 +1145,7 @@ for(i in 2:100){
   animation <- c(animation, combined_gif)
 }
 
-
-# save as gif
-anim_save("Output/Figures/pca_flow.gif", animation)
-# as mp4
-anim_save("Output/Figures/pca_flow.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
-
-# stage plot solo
-
-# combine pca and flow animations horizontally
+# Combine pca and flow animations horizontally
 nframes <- length(pcgif)
 
 # Get target dimensions from pcgif
@@ -1161,10 +1189,13 @@ for(i in 2:nframes){
   animation_lebls <- c(animation_lebls, combined)
 }
 
-# Save
+# Save as gif
+anim_save("Output/Figures/pca_flow.gif", animation)
 anim_save("Output/Figures/pca_flow_horizontal2.gif", animation)
-anim_save("Output/Figures/pca_flow_horizontal2.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
-
 anim_save("Output/Figures/pca_flow_horizontal2_lebls.gif", animation_lebls)
+
+# Save as mp4
+anim_save("Output/Figures/pca_flow.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
+anim_save("Output/Figures/pca_flow_horizontal2.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
 anim_save("Output/Figures/pca_flow_horizontal2_lebls.mp4", animation_lebls, renderer = ffmpeg_renderer(codec = "libx264"))
 
