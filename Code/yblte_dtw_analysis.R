@@ -1,6 +1,7 @@
 # -----------------------------
 # Load packages
 # -----------------------------
+library(tidyverse)
 library(dtw)
 library(pheatmap)
 library(dtwclust)
@@ -151,16 +152,16 @@ for(i in 1:n){
 
 png("Output/Figures/YBLTE_Point_wq_DTW_clust_mv%02d.png",
     height = 6, width = 7, units = "in", res = 1000, family = "serif")
+
+pheatmap(dtw_mat, main = "DTW PC1")
+pheatmap(dtw_mat2, main = "DTW PC2")
 pheatmap(
   dtw_multi,
   clustering_distance_rows = "euclidean",
   clustering_distance_cols = "euclidean",
   main = "Multivariate DTW Distance (PC1 + PC2)"
 )
-dev.off()
-par(mfrow = c(1, 3))
 
-pheatmap(dtw_mat, main = "DTW PC1")
-pheatmap(dtw_mat2, main = "DTW PC2")
-pheatmap(dtw_multi, main = "Multivariate DTW (PC1+PC2)")
+dev.off()
+
 
