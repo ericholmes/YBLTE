@@ -3,6 +3,7 @@
 # -----------------------------
 library(dtw)
 library(pheatmap)
+library(dtwclust)
 
 # -----------------------------
 # 1. Prepare trajectories
@@ -105,7 +106,7 @@ pc_score2$clustfac <- factor(pc_score2$cluster)
 png("Output/Figures/YBLTE_Point_wq_DTW_clust_ts%02d.png",
     height = 6, width = 7, units = "in", res = 1000, family = "serif")
 ggplot(pc_score2, aes(x = week, y = PC1, color = Sitefac, linetype = clustfac)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   theme_minimal() + animCol +
   labs(
     title = "PC1 Trajectories Colored by DTW Clusters",
@@ -124,8 +125,6 @@ ggplot(pc_score2, aes(x = week, y = PC2, color = Sitefac, linetype = factor(clus
 dev.off()
 
 # Multivariate DTW --------------------------------------------------------
-
-library(dtwclust)
 
 sites <- unique(pc_score$Sitefac)
 
@@ -149,6 +148,7 @@ for(i in 1:n){
     )
   }
 }
+
 png("Output/Figures/YBLTE_Point_wq_DTW_clust_mv%02d.png",
     height = 6, width = 7, units = "in", res = 1000, family = "serif")
 pheatmap(

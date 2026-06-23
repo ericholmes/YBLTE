@@ -311,14 +311,6 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(fill = "Correlation", x = NULL, y = NULL))
 
-# Save output
-# png("Output/Figures/YBLTE_Point_wq_correlation_%02d.png",
-#     height = 6, width = 7, units = "in", res = 1000, family = "serif")
-# 
-# corplot
-# 
-# dev.off()
-
 ## Continuous gauge data plotting ----
 #dput(RColorBrewer::brewer.pal(9, "Set1"))
 # c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999") 
@@ -393,7 +385,7 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu, color = Site)))
 
-### Flow
+### Flow ----
 (contflowplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("LIS", "RCS", "YBY", "PTC") & is.na(cdec_wide$discharge_cfs) == F,], 
                         aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
   geom_line(alpha = .5) + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
@@ -427,7 +419,7 @@ flow_perc$Site_no <- factor(flow_perc$Site_no, levels = c("RCS", "FRE", "CCY", "
 
 # Percent flow plot, stacked bar plot (daily increments)
 (contpercflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
-  geom_bar(stat = "identity", alpha = 0.9, width = 1) + animFill +
+  geom_bar(stat = "identity", alpha = 0.7, width = 1) + animFill +
   scale_x_date(date_breaks = "1 month", date_labels = "%b-1") +
   labs(x = NULL, y = "Percent Flow", fill = "Site") + theme_bw())
 
@@ -439,7 +431,7 @@ flow_perc$Site_no <- factor(flow_perc$Site_no, levels = c("RCS", "FRE", "CCY", "
 #     # scale_color_brewer(palette = "Set1") +
 #     theme_bw() + labs(y = "Stage (ft)", x = NULL))
 
-### Stage
+### Stage ----
 
 # Stage at tule pond
 (tulepondplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("YBT") & 
@@ -488,9 +480,9 @@ stage_wide$above <- ifelse(stage_wide$above, "Flowing", "Below")
     scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     geom_line(data = cdec_wide_stage[cdec_wide_stage$Site_no == "KNL" & is.na(cdec_wide_stage$Site_no) == F, ], linewidth = 3, alpha = .5) +
     animCol + 
-  theme_bw() + labs(title = "RiverStage ", y = "Stage (ft)", x = NULL, color = "Site"))
+  theme_bw() + labs(title = "River Stage ", y = "Stage (ft)", x = NULL, color = "Site"))
 
-### Save outputs
+### Save outputs ----
 # All gauge plots
 png("Output/Figures/YBLTE_Cont_wq_%02d.png",
     height = 10, width = 6, units = "in", res = 1000, family = "serif")
@@ -528,6 +520,14 @@ png("Output/Yolo_hydrographs_2026%03d.png",
                     ylim = c(0, max(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC"), "discharge_cfs"], na.rm = T))))
 
 dev.off()
+(contflowplot2_class <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC", "FRE") & 
+                                           is.na(cdec_wide$discharge_cfs) == F,], aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
+    geom_ribbon(data = cdec_wide[cdec_wide$Site_no %in% c("FRE"),],
+                aes(ymax = discharge_cfs, ymin = 0), color = "slateblue4", fill = "slateblue4", alpha = .2) +
+    geom_line(alpha = .8, linewidth = .8) + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") + animCol +
+    theme_bw() + labs(y = "Discharge (cfs)", x = NULL, color = "Site") +
+    coord_cartesian(clip = "off",
+                    ylim = c(0, max(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC"), "discharge_cfs"], na.rm = T))))
 
 # Stage plots, two sites at a time
 png("Output/Figures/YBLTE_Stage_plot_%02d.png",
@@ -608,7 +608,7 @@ cowplot::plot_grid(
 
 ## PCA for point wq ----
 
-### Cleaning wqp to plug into PCA
+### Cleaning wqp to plug into PCA ----
 
 # Filter var of interest; temp too variable (discrete data),
   # sal and TDS like SPC, pc like chlorop, zoop not at every site
@@ -620,7 +620,7 @@ rownames(pc_in) <- paste(pc_in$Site, pc_in$RowID)
 pc_in <- drop_na(pc_in)
 pc_in <- pc_in[pc_in$RowID != 257,] ## dropping KLWW on day when flow was reversing
 
-### PCA calculations
+### PCA calculations ----
 pc <- prcomp(subset(pc_in, select=-c(RowID, Site,Sitefac, Date, week)), scale=T)
 pc$rotation <- -1*pc$rotation
 pc$x <- -1*pc$x
@@ -644,7 +644,7 @@ pc_load_scaled <- pc_load*scaling_factor
 # Calculate convex hull by site
 conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subset(select=-c(week))
 
-### Plotting PCA
+### Plotting PCA ----
 
 # All sites with conv hulls
 (pcaplot1 <- ggplot()+
@@ -737,7 +737,7 @@ pc_cdec$Site_no <- factor(pc_cdec$Site_no, )
 png("Output/Figures/YBLTE_wq_PCA_%02d.png",
     height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
 
-pcaplot2
+pcaplot1; pcaplot2; pcaplot3
 
 dev.off()
 
@@ -912,7 +912,7 @@ p
 
 ## Animations ----
 
-### PCA animation plots, will go by week (starts at 2 where no missing data)
+### PCA animation plots, will go by week (starts at 2 where no missing data) ----
 pcaplots <- ggplot()+
   # Conv hulls for tributaries
   geom_polygon(data=conv_hull%>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")), 
@@ -1044,7 +1044,7 @@ pcgif_lebls <- animate(
   height = 500, width = 600, fps = 10
 )
 
-### Stage plots, animated by date (lines up with PCA plots because same time frame)
+### Stage plots, animated by date (lines up with PCA plots because same time frame) ----
 
 # Get stage for tributaries in same time frame as PCA
 stage_in_time <- cdec_wide_stage[is.na(cdec_wide_stage$Site_no) == F,]%>% 
@@ -1071,7 +1071,7 @@ stggif <- animate(
   stageplot+transition_reveal(Datetime),
   height=400, width=600, fps = 10)
 
-### Flow plots, animated by date
+### Flow plots, animated by date ----
 
 # Get flow for tributaries in same time frame as PCA
 flow_in_time <- cdec_wide %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC")) %>% 
@@ -1128,7 +1128,7 @@ pflowgif <- animate(
   pflowplot+transition_states(Date)+shadow_mark(past=T),
   height=300, width=600, fps = 10)
 
-### Combine pca and flow animations
+### Combine pca and flow animations ----
 pcgif <- image_read(pcgif)
 flowgif <- image_read(flowgif)
 pflowgif <- image_read(pflowgif)
