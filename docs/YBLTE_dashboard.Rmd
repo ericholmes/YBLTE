@@ -90,7 +90,7 @@ Heatmap
 
 Water‑Quality Heat Map
 ```{r}
-knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_01.png")
+knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_02.png")
 ```
 
 Logger Data
@@ -139,6 +139,81 @@ htmltools::tagList(dy_plts[4])
 htmltools::tagList(dy_plts[5])
 htmltools::tagList(dy_plts[6])
 htmltools::tagList(dy_plts[7])
+```
+Logger Data (plotly)
+=====================================
+
+### 
+```{r}
+library(dplyr)
+library(plotly)
+startdate <- as.POSIXct("2025-11-01")
+enddate <- enddate <- as.POSIXct("2026-05-31")
+make_all_station_plots <- function() {
+  
+  stations <- sort(unique(dobodat$station))
+  station_colors <- RColorBrewer::brewer.pal(n = length(stations), "Dark2")
+  names(station_colors) <- stations
+  
+  # Temperature panel
+  p_temp <- plot_ly(type = "scatter", mode = "lines")
+  for (s in stations) {
+    df <- dobodat %>% filter(station == s)
+    p_temp <- p_temp %>%
+      add_trace(
+        data = df,
+        x = ~datetime, y = ~temp_c,
+        name = s,
+        legendgroup = s,
+        showlegend = TRUE,                 # only here
+        line = list(color = station_colors[s])
+      )
+  }
+  p_temp <- p_temp %>% layout(yaxis = list(title = "Temp (°C)"))
+  
+  # DO panel
+  p_do <- plot_ly(type = "scatter", mode = "lines")
+  for (s in stations) {
+    df <- dobodat %>% filter(station == s)
+    p_do <- p_do %>%
+      add_trace(
+        data = df,
+        x = ~datetime, y = ~do_mgl,
+        name = s,
+        legendgroup = s,
+        showlegend = FALSE,                # hide duplicate legend entries
+        line = list(color = station_colors[s])
+      )
+  }
+  p_do <- p_do %>% layout(yaxis = list(title = "DO (mg/L)"))
+  
+  # SPC panel
+  p_spc <- plot_ly(type = "scatter", mode = "lines")
+  for (s in stations) {
+    df <- conddat %>% filter(station == s)
+    p_spc <- p_spc %>%
+      add_trace(
+        data = df,
+        x = ~datetime, y = ~spc,
+        name = s,
+        legendgroup = s,
+        showlegend = FALSE,                # hide duplicate legend entries
+        line = list(color = station_colors[s])
+      )
+  }
+  p_spc <- p_spc %>% layout(yaxis = list(title = "SPC (µS/cm)"))
+  
+  # Stack vertically with shared x-axis
+  subplot(p_temp, p_do, p_spc,
+          nrows = 3,
+          shareX = TRUE,
+          titleY = TRUE) %>%
+  layout(xaxis = list(range = c(startdate, enddate)))
+}
+
+
+make_all_station_plots()
+
 ```
 
 PCA animation
