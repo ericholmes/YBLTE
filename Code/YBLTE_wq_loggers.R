@@ -94,6 +94,10 @@ conddat <- drop_na(conddat_raw)
 dobodat <- dobodat[(dobodat$datetime > startdate) & (dobodat$datetime < enddate),]
 conddat <- conddat[(conddat$datetime > startdate) & (conddat$datetime < enddate),]
 
+# Sort data
+dobodat <- dobodat %>% arrange(station, datetime)
+conddat <- conddat %>% arrange(station, datetime)
+
 # Filter dates for bad data, pulled from csv where predetermined
 qclookup <- read.csv("Data/tabular/YBLTE_logger_qc_lookup.csv")
 
@@ -153,13 +157,8 @@ dobodat$station <- factor(dobodat$station,
                           levels = c("KNG3", "CNW", "YBLR4", "SB4", "I80", "TEW", "TER"))
 conddat$station <- factor(conddat$station, 
                           levels = c("KNG3", "CNW", "YBLR4", "SB4", "I80", "TEW", "TER"))
-dobodat <- arrange(dobodat, station)
-conddat <- arrange(conddat, station)
 
-# Save datasets for plotting in dashboard
-if(saveOutput == T){
-  save(dobodat, conddat, file = "Data/YBLTE_logger.RData")
-}
+
 
 # Get daily min, max, mean per variable
 dobodaily <- dobodat %>% filter(temp_c < 30) %>% group_by(station, date) %>% 
@@ -187,13 +186,30 @@ cdmelt$stationfac <- factor(cdmelt$station,
 # save(conddat, file="eclog.Rdata")
 
 ## Plot DOBO+EC data ----------------------------------------------------------
+# Note: SB4 has a large data gap (Jan 27-Feb 17), so many of the plots will plot SB4 twice
+sb4_Dcondition <- (dobodat$station=="SB4")&(dobodat$datetime > as.POSIXct("02/01/2026", format="%m/%d/%Y"))
+sb4_Ccondition <- (conddat$station=="SB4")&(conddat$datetime > as.POSIXct("02/01/2026", format="%m/%d/%Y"))
+
+dobodat_full <- dobodat
+dobo_sb4 <- dobodat[sb4_Dcondition,]
+dobodat <- dobodat[!sb4_Dcondition,]
+
+conddat_full <- conddat
+cond_sb4 <- conddat[sb4_Ccondition,]
+conddat <- conddat[!sb4_Ccondition,]
+
+# Save datasets for plotting in dashboard
+if(saveOutput == T){
+  save(dobodat, dobo_sb4, dobodat_full, conddat, cond_sb4, conddat_full, file = "Data/YBLTE_logger.RData")
+}
+
 # Read in and clean wqp data
 wqp <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
 wqp <- wqp %>% filter(Site %in% unique(dobodat$station))
 
 # Create dygraphs for cleaning data and interactive aspect
-for(s in unique(dobodat$station)){
-  dyD <- dygraph(dobodat %>% filter(station == s) %>% subset(select = c(datetime, temp_c, do_mgl)),
+for(s in unique(dobodat_full$station)){
+  dyD <- dygraph(dobodat_full %>% filter(station == s) %>% subset(select = c(datetime, temp_c, do_mgl)),
                 main = paste("MiniDOT at", s), group = s, height = 300, width = "47%") %>%     
     dyAxis("y", label = "Temperature (C)") %>% 
     dyAxis("y2", label = "Dissolved Oxygen (mg/L)", independentTicks = T) %>% 
@@ -201,7 +217,7 @@ for(s in unique(dobodat$station)){
     dySeries("do_mgl", label = "DO", axis = "y2") %>% 
     dyRangeSelector(dateWindow = c(startdate, enddate))
 
-  dyC <- dygraph(conddat %>% filter(station == s) %>% subset(select = c(datetime, spc)), 
+  dyC <- dygraph(conddat_full %>% filter(station == s) %>% subset(select = c(datetime, spc)), 
                 main = paste("EC at", s), group = s, height = 300, width = "47%") %>% 
     dyAxis("y", label = "Specific Conductivity (uS/cm)") %>% 
     dySeries("spc", label = "Conductivity") %>% 
@@ -215,16 +231,19 @@ for(s in unique(dobodat$station)){
 wqp_plts <- c()
 for(s in unique(dobodat$station)){
   wqp_plts <- append(wqp_plts,ggplot() + geom_line(data = dobodat %>% filter(station == s), aes(x = datetime, y = temp_c)) +
+                   geom_line(data = dobo_sb4 %>% filter(station == s), aes(x = datetime, y = temp_c)) +
                    geom_point(data = wqp %>% filter(Site == s), aes(x = Date, y = Temp), color = "blue") + theme_bw() +
                    facet_wrap(station~.))
 }
 for(s in unique(dobodat$station)){
   wqp_plts <- append(wqp_plts,ggplot() + geom_line(data = dobodat %>% filter(station == s), aes(x = datetime, y = do_mgl)) +
+                   geom_line(data = dobo_sb4 %>% filter(station == s), aes(x = datetime, y = do_mgl)) +
                    geom_point(data = wqp %>% filter(Site == s), aes(x = Date, y = DO_mgl), color = "blue") + theme_bw() +
                    facet_wrap(station~.))
 }
 for(s in unique(conddat$station)){
   wqp_plts <- append(wqp_plts,ggplot() + geom_line(data = conddat %>% filter(station == s), aes(x = datetime, y = spc)) +
+                   geom_line(data = cond_sb4 %>% filter(station == s), aes(x = datetime, y = spc)) +
                    geom_point(data = wqp %>% filter(Site == s), aes(x = Date, y = SPC_uscm), color = "blue") + theme_bw() +
                    facet_wrap(station~.))
 }
@@ -266,15 +285,14 @@ cowplot::plot_grid(plotlist = trans_plts)
 
 wqp$station <- wqp$Site
 ### Temperature ----
-ggplot() + geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station)) +
-  geom_point(data = wqp, aes(x = Date, y = Temp, color = station)) + theme_bw()
+ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line(aes(color = station)) +
+  geom_line(data = dobo_sb4, aes(x = datetime, y = temp_c, color = station)) + theme_bw()
 
-
-
-ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line() + theme_bw() + 
+ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line() + 
+  geom_line(data = dobo_sb4, aes(x = datetime, y = temp_c, color = station)) + theme_bw() + 
   facet_wrap(station~.)
 
-ggplot(dobodaily, aes(x = maxtemp, fill = station)) + geom_density(alpha = .2) + 
+ggplot(dobodaily, aes(x = maxtemp, fill = station)) + geom_density(alpha = .2)+ 
   facet_wrap(station ~ .) + theme_bw()
 
 ggplot(dbmelt[dbmelt$variable %in% c("mintemp", "meantemp", "maxtemp"),], 
@@ -284,12 +302,12 @@ ggplot(dbmelt[dbmelt$variable %in% c("mintemp", "meantemp", "maxtemp"),],
 
 ### DO ----
 
-ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line(aes(color = station)) + theme_bw()
+ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line(aes(color = station)) +
+  geom_line(data = dobo_sb4, aes(x = datetime, y = do_mgl, color = station)) + theme_bw()
 
-ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line() + theme_bw() + 
+ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line() +
+  geom_line(data = dobo_sb4, aes(x = datetime, y = do_mgl, color = station)) + theme_bw() + 
   facet_wrap(station~.)
-
-
 
 ggplot(dobodaily, aes(x = maxdo, fill = station)) + geom_density(alpha = .2) + 
   facet_wrap(station ~ .) + theme_bw()
@@ -304,12 +322,14 @@ if(saveOutput == T){png(paste("Output/Figures/YBLTE_Temp+DO_panels_%02d.png", se
                         height = 6, width = 8, unit = "in", res = 1000)}
 
 ggplot() + geom_line(data = dobodat, aes(x = datetime, y = temp_c, color = station), alpha = .5) +
-  geom_point(data = wqp, aes(x = Date, y = Temp, color = station)) + theme_bw() + 
+  geom_line(data = dobo_sb4, aes(x = datetime, y = temp_c, color = station)) + 
+  geom_point(data = wqp, aes(x = Date, y = Temp, color = Site)) + theme_bw() + 
   labs(x = NULL, y = "Temperature (C)") +
   facet_wrap(station~.)
 
 ggplot() + geom_line(data = dobodat, aes(x = datetime, y = do_mgl, color = station), alpha = .5) +
-  geom_point(data = wqp, aes(x = Date, y = DO_mgl, color = station)) + theme_bw() +
+  geom_line(data = dobo_sb4, aes(x = datetime, y = do_mgl, color = station)) + 
+  geom_point(data = wqp, aes(x = Date, y = DO_mgl, color = Site)) + theme_bw() +
   labs(x = NULL, y = "Dissolved Oxygen (mg/L)") +
   facet_wrap(station~.)
 
@@ -317,9 +337,11 @@ if(saveOutput == T){dev.off()}
 
 ### Conductivity ----
 
-ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line(aes(color = station)) + theme_bw()
+ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line(aes(color = station)) +
+  geom_line(data = cond_sb4, aes(x = datetime, y = spc, color = station)) + theme_bw()
 
-ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line() + theme_bw() +
+ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line() +
+  geom_line(data = cond_sb4, aes(x = datetime, y = spc, color = station)) + theme_bw()
   facet_wrap(station~.)
 
 ggplot(conddaily, aes(x = maxc, fill = station)) + geom_density(alpha = .2) + 

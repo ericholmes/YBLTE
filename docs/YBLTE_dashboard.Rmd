@@ -107,8 +107,8 @@ enddate <- enddate <- as.POSIXct("2026-05-31")
 dy_plts <- list()
 i = 1
 
-for(s in unique(dobodat$station)){
-  dyD <- dygraph(dobodat %>% filter(station == s) 
+for(s in unique(dobodat_full$station)){
+  dyD <- dygraph(dobodat_full %>% filter(station == s) 
         %>% subset(select = c(datetime, temp_c, do_mgl)),
     main = paste("MiniDOT at", s), group = s, height = 200, width = 200) %>%     
     dyAxis("y", label = "Temperature (C)") %>% 
@@ -117,7 +117,7 @@ for(s in unique(dobodat$station)){
     dySeries("do_mgl", label = "DO", axis = "y2") %>% 
     dyRangeSelector(dateWindow = c(startdate, enddate))
 
-  dyC <- dygraph(conddat %>% filter(station == s) %>% subset(select = c(datetime, spc)), 
+  dyC <- dygraph(conddat_full %>% filter(station == s) %>% subset(select = c(datetime, spc)), 
                 main = paste("EC at", s), group = s, height = 200, width = 200) %>% 
     dyAxis("y", label = "Sp. Conductivity (uS/cm)") %>% 
     dySeries("spc", label = "SPC") %>% 
@@ -159,6 +159,7 @@ make_all_station_plots <- function() {
   p_temp <- plot_ly(type = "scatter", mode = "lines")
   for (s in stations) {
     df <- dobodat %>% filter(station == s)
+    df_sb4 <- dobo_sb4 %>% filter(station == s)
     p_temp <- p_temp %>%
       add_trace(
         data = df,
@@ -166,6 +167,14 @@ make_all_station_plots <- function() {
         name = s,
         legendgroup = s,
         showlegend = TRUE,                 # only here
+        line = list(color = station_colors[s])
+      ) %>% 
+      add_trace(
+        data = df_sb4,
+        x = ~datetime, y = ~temp_c,
+        name = s,
+        legendgroup = s,
+        showlegend = FALSE,                # hide duplicate legend entries                
         line = list(color = station_colors[s])
       )
   }
@@ -175,6 +184,7 @@ make_all_station_plots <- function() {
   p_do <- plot_ly(type = "scatter", mode = "lines")
   for (s in stations) {
     df <- dobodat %>% filter(station == s)
+    df_sb4 <- dobo_sb4 %>% filter(station == s)
     p_do <- p_do %>%
       add_trace(
         data = df,
@@ -182,6 +192,14 @@ make_all_station_plots <- function() {
         name = s,
         legendgroup = s,
         showlegend = FALSE,                # hide duplicate legend entries
+        line = list(color = station_colors[s])
+      ) %>% 
+      add_trace(
+        data = df_sb4,
+        x = ~datetime, y = ~do_mgl,
+        name = s,
+        legendgroup = s,
+        showlegend = FALSE,                 
         line = list(color = station_colors[s])
       )
   }
@@ -191,6 +209,7 @@ make_all_station_plots <- function() {
   p_spc <- plot_ly(type = "scatter", mode = "lines")
   for (s in stations) {
     df <- conddat %>% filter(station == s)
+    df_sb4 <- cond_sb4 %>% filter(station == s)
     p_spc <- p_spc %>%
       add_trace(
         data = df,
@@ -199,7 +218,16 @@ make_all_station_plots <- function() {
         legendgroup = s,
         showlegend = FALSE,                # hide duplicate legend entries
         line = list(color = station_colors[s])
+      ) %>%
+      add_trace(
+        data = df_sb4,
+        x = ~datetime, y = ~spc,
+        name = s,
+        legendgroup = s,
+        showlegend = FALSE,                # hide duplicate legend entries
+        line = list(color = station_colors[s])
       )
+    
   }
   p_spc <- p_spc %>% layout(yaxis = list(title = "SPC (µS/cm)"))
   
@@ -394,7 +422,7 @@ Dynamic Time Warping Analysis
 =====================================
 
 ```{r}
-knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_DTW_clust03.png")
+knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_DTW_clust_mv03.png")
 ```
 
 End member mixing analysis
