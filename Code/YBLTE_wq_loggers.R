@@ -181,9 +181,6 @@ dbmelt$stationfac <- factor(dbmelt$station,
                             levels = c("TER", "TEW", "I80", "SB4", "YBLR4", "CNW", "KNG3"))
 cdmelt$stationfac <- factor(cdmelt$station,
                             levels = c("TER", "TEW", "I80", "SB4", "YBLR4", "CNW", "KNG3"))
-# save data for transfer
-# save(dobodat, file="minidot.Rdata")
-# save(conddat, file="eclog.Rdata")
 
 ## Plot DOBO+EC data ----------------------------------------------------------
 # Note: SB4 has a large data gap (Jan 27-Feb 17), so many of the plots will plot SB4 twice
@@ -289,7 +286,7 @@ ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line(aes(color = station))
   geom_line(data = dobo_sb4, aes(x = datetime, y = temp_c, color = station)) + theme_bw()
 
 ggplot(dobodat, aes(x = datetime, y = temp_c)) + geom_line() + 
-  geom_line(data = dobo_sb4, aes(x = datetime, y = temp_c, color = station)) + theme_bw() + 
+  geom_line(data = dobo_sb4, aes(x = datetime, y = temp_c)) + theme_bw() + 
   facet_wrap(station~.)
 
 ggplot(dobodaily, aes(x = maxtemp, fill = station)) + geom_density(alpha = .2)+ 
@@ -306,7 +303,7 @@ ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line(aes(color = station))
   geom_line(data = dobo_sb4, aes(x = datetime, y = do_mgl, color = station)) + theme_bw()
 
 ggplot(dobodat, aes(x = datetime, y = do_mgl)) + geom_line() +
-  geom_line(data = dobo_sb4, aes(x = datetime, y = do_mgl, color = station)) + theme_bw() + 
+  geom_line(data = dobo_sb4, aes(x = datetime, y = do_mgl)) + theme_bw() + 
   facet_wrap(station~.)
 
 ggplot(dobodaily, aes(x = maxdo, fill = station)) + geom_density(alpha = .2) + 
@@ -341,7 +338,7 @@ ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line(aes(col
   geom_line(data = cond_sb4, aes(x = datetime, y = spc, color = station)) + theme_bw()
 
 ggplot(conddat, aes(x = datetime, y = spc, group = station)) + geom_line() +
-  geom_line(data = cond_sb4, aes(x = datetime, y = spc, color = station)) + theme_bw()
+  geom_line(data = cond_sb4, aes(x = datetime, y = spc)) + theme_bw() +
   facet_wrap(station~.)
 
 ggplot(conddaily, aes(x = maxc, fill = station)) + geom_density(alpha = .2) + 
