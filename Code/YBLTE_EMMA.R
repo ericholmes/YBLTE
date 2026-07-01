@@ -5,6 +5,7 @@ library(ggplot2)
 library(ggtern)
 library(purrr)
 library(readxl)
+library(patchwork)
 
 # ---------------------------------------------------------
 # 0. Load data
@@ -201,13 +202,14 @@ emma_long <- emma_clean %>%
 # ---------------------------------------------------------
 
 (emmaplot <- ggplot(emma_long[is.na(emma_long$Site) == F,], aes(week, fraction, fill = source)) +
-  geom_col() +
+  geom_col(alpha=0.8) +
   facet_grid(Site ~ .) +
-  scale_fill_manual(values = c(FWBN = "skyblue", CCSYB = "forestgreen", KLWW = "salmon2")) +
+  scale_fill_manual(values = c(FWBN = "#B63679FF", CCSYB = "#FB8861FF", KLWW = "#482878FF")) +
   labs(
     title = "EMMA Percent Source Contribution",
-    x = "Week",
-    y = "Fraction"
+    x = NULL,
+    y = "Fraction",
+    fill = "Water source"
   ) + scale_x_date(date_breaks = "1 month", date_labels = "%b-1",
                   limits = c(as.Date("2025-12-21"), as.Date("2026-04-19"))) +
   theme_bw())
@@ -217,7 +219,7 @@ emma_long <- emma_clean %>%
   #   axis.text.x = element_text(angle = 45, hjust = 1)
   # )
 dates <- unique(data.frame(emma_long[is.na(emma_long$Site) == F,"week"]))
-range(dates)
+
 # ---------------------------------------------------------
 # 12. Add flow
 # ---------------------------------------------------------
@@ -233,7 +235,7 @@ sensor_codes <- data.frame(sensor = c("chla", "ec", "discharge_cfs", "fdom",
                                           25, 61, 62, 221,
                                           1))
 startdate <- "2025-10-1"
-enddate <- Sys.Date()
+enddate <- "2026-05-31"
 
 cdec <- data.frame()
 for(station in cdec_stations){
@@ -251,6 +253,7 @@ cdecmerge <- merge(cdec, sensor_codes, by.x = "parameterCd", by.y = "sensor_num"
 cdec_wide <- cdecmerge %>% select(-parameterCd) %>% 
   pivot_wider(names_from = sensor, values_from = Param_val)
 cdec_wide$Date <- as.Date(cdec_wide$Datetime)
+cdec_wide <- cdec_wide %>% filter((Datetime>as.POSIXct("2025-12-21"))&(Datetime<as.POSIXct("2026-04-19")))
 trib_map <- c(
   "FRE" = "FWBN",   # Feather River
   "CCY" = "CCSYB",  # Cache Creek
@@ -277,9 +280,10 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
 
 # percent flow plot, stacked bar plot (daily increments)
 (contpercflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
-    geom_bar(stat = "identity", alpha = 0.9, width = 1) + animFill +
+    geom_bar(stat = "identity", alpha = 0.8, width = 1) + 
+    scale_fill_manual(values = c(FRE = "#B63679FF",CCY = "#FB8861FF", RCS = "#482878FF")) +
     scale_x_date(date_breaks = "1 month", date_labels = "%b-1") +
-    labs(x = NULL, y = "Percent Flow") + theme_bw())
+    labs(x = NULL, y = "Percent Flow", fill = "Water source") + theme_bw())
 
 flow_in_time <- cdec_wide %>% filter(Site_no %in% c("RCS", "FRE", "CCY")) %>%drop_na(discharge_cfs)
 
@@ -293,11 +297,11 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
 
 # percent flow plot, stacked bar plot (daily increments)
 (contpercflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
-    geom_bar(stat = "identity", alpha = 0.9, width = 1)  + 
-    scale_fill_manual(values = c(FRE = "skyblue",CCY = "forestgreen", RCS = "salmon2")) +
-    scale_x_date(date_breaks = "1 month", date_labels = "%b-1",
-                 limits = c(as.Date("2025-12-21"), as.Date("2026-04-19"))) +
-    labs(x = NULL, y = "Percent Flow") + theme_bw()+ theme(axis.text.x = element_blank()))
+    geom_bar(stat = "identity", alpha = 0.8, width = 1)  + 
+    scale_fill_manual(values = c(FRE = "#B63679FF",CCY = "#FB8861FF", RCS = "#482878FF")) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%b-1") +
+    labs(x = NULL, y = "Percent Flow", fill = "Water source") + 
+    theme_bw()+ theme(axis.text.x = element_blank()))
 
 (flow_plot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "FRE") & 
                                 is.na(cdec_wide$discharge_cfs) == F,], aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
@@ -306,13 +310,12 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
   geom_line(alpha = .8, linewidth = .8) + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
   geom_line(data = cdec_wide[cdec_wide$Site_no %in% c("LIS") & 
                                is.na(cdec_wide$discharge_cfs) == F,], alpha = .2) + 
-  scale_color_manual(values = c(FRE = "skyblue",CCY = "forestgreen",RCS = "salmon2")) +
-  scale_fill_manual(values = c(FRE = "skyblue",CCY = "forestgreen", RCS = "salmon2")) +
-  theme_bw() + labs(y = "Discharge (cfs)", x = NULL) + theme(axis.text.x = element_blank()) +
+  scale_color_manual(values = c(FRE = "#B63679FF",CCY = "#FB8861FF",RCS = "#482878FF")) +
+  scale_fill_manual(values = c(FRE = "#B63679FF",CCY = "#FB8861FF", RCS = "#482878FF")) +
+  theme_bw() + labs(y = "Discharge (cfs)", color = "Water source", fill = "Water source", x = NULL) + 
+    theme(axis.text.x = element_blank()) +
   coord_cartesian(clip = "off", xlim = c(as.POSIXct("2025-12-21"), as.POSIXct("2026-04-19")),
                   ylim = c(0, max(cdec_wide[cdec_wide$Site_no %in% c("CCY", "RCS", "PTC"), "discharge_cfs"], na.rm = T))))
-
-library(patchwork)
 
 final_plot <- flow_plot  /
   contpercflowplot /

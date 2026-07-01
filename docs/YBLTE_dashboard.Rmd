@@ -2,7 +2,7 @@
 title: "YBLTE Interactive Dashboard"
 output:
   flexdashboard::flex_dashboard:
-    orientation: rows
+    orientation: columns
     vertical_layout: fill
 output_dir: "docs"
 ---
@@ -17,6 +17,53 @@ library(readxl)
 library(tidyverse)
 library(dygraphs)
 library(plotly)
+
+# Set colors
+animCol <- scale_color_manual(values = c("KNL" = "#440154FF",
+                                          "KLG" = "#444444",
+                                          "RCS" = "#482878FF",
+                                          "FRE" = "#B63679FF",
+                                          "YBT" = "#3E4A89FF",
+                                          "CCY" = "#FB8861FF",
+                                          "YBY" = "#31688EFF",
+                                          "PTC" = "#CED483",
+                                          "FWBN" = "#B63679FF", 
+                                          "FW1" = "#440154FF", 
+                                          "KLWW" = "#482878FF",
+                                          "KNG3" = "#453581FF", 
+                                          "CCSYB" = "#FB8861FF",
+                                          "CNW" = "#34618DFF",
+                                          "RD22" = "#2B748EFF", 
+                                          "YBLR4" = "#24878EFF", 
+                                          "SB4" = "#1F998AFF",
+                                          "I80" = "#25AC82FF", 
+                                          "AL0" = "#40BC72FF",
+                                          "LIS" = "#67CC5CFF", 
+                                          "STTD" = "#73A32F", 
+                                          "TEW" = "#CBE11EFF",
+                                          "TER" = "#FDE725FF"))
+animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
+                                          "RCS" = "#482878FF",
+                                          "FRE" = "#B63679FF",
+                                          "YBT" = "#3E4A89FF",
+                                          "CCY" = "#FB8861FF",
+                                          "YBY" = "#31688EFF",
+                                          "PTC" = "#E0E092",
+                                          "FWBN" = "#B63679FF", 
+                                          "FW1" = "#440154FF", 
+                                          "KLWW" = "#482878FF",
+                                          "KNG3" = "#453581FF", 
+                                          "CCSYB" = "#FB8861FF",
+                                          "CNW" = "#34618DFF",
+                                          "RD22" = "#2B748EFF", 
+                                          "YBLR4" = "#24878EFF", 
+                                          "SB4" = "#1F998AFF",
+                                          "I80" = "#25AC82FF", 
+                                          "AL0" = "#40BC72FF",
+                                          "LIS" = "#67CC5CFF", 
+                                          "STTD" = "#73A32F", 
+                                          "TEW" = "#CBE11EFF",
+                                          "TER" = "#FDE725FF"))
 
 # Load spatial objects from your saved Rdata file
 load("../Data/spatial/Yolo_map_data.Rdata")
@@ -47,8 +94,41 @@ sf::sf_use_s2(FALSE)
 rest_polys$acres <- round(as.numeric(st_area(rest_polys)) * 0.00024711, 1)
 
 ```
+
+Overview {data-orientation=rows}
+=====================================
+Row {data-height='30%'}
+-------------------------------------
+###
+Hello!
+
+The Yolo Bypass Lower Trophic Expansion (YBLTE) builds on current lower trophic (LT) sampling in the bypass. LT includes phytoplankton and zooplankton that provide food for fish.
+
+We sampled water quality, chlorophyll, zooplankton, and fish across Yolo to better understand how hydrology, environmental conditions, LT, and fish habitat suitability are connected.
+
+Dominating water sources: Sacramento River, Colusa Basin, Cache Creek, Putah Creek (not as influential this year)
+
+Explore our dashboard to see what we found!
+
+Row {data-height='70%'}
+-------------------------------------
+### science in action!
+```{r}
+knitr::include_graphics("../docs/yblte_pic.png")
+```
+
 Interactive map
 =====================================
+Col {data-width='25%'}
+-------------------------------------
+### 
+The map shows the sites where we sampled. 
+
+Click on each for more information! You can also zoom in/out and select which layers to show.
+
+Col {data-width='75%'}
+-------------------------------------
+### 
 ```{r}
 leaflet(rest_polys) %>%
   addProviderTiles("Esri.WorldImagery") %>%
@@ -62,6 +142,30 @@ leaflet(rest_polys) %>%
       "<b>Acreage:</b> ", acres
     )
   ) %>%
+  addCircleMarkers(
+    data = proj_pts %>% filter(Site_id=="FWBN"),
+    lng = ~Lon, lat = ~Lat,
+    radius = 10, color = "#B63679FF",
+    group = "Water Source Site",
+    fillOpacity = 0.8,
+    popup = ~paste0("<b>Tributary:</b> Sacramento River") 
+    ) %>%
+  addCircleMarkers(
+    data = proj_pts %>% filter(Site_id=="KLWW"),
+    lng = ~Lon, lat = ~Lat,
+    radius = 10, color = "#482878FF",
+    group = "Water Source Site",
+    fillOpacity = 0.8,
+    popup = ~paste0("<b>Tributary:</b> Colusa Basin") 
+    ) %>%
+  addCircleMarkers(
+    data = proj_pts %>% filter(Site_id=="CCSYB"),
+    lng = ~Lon, lat = ~Lat,
+    radius = 10, color = "#FB8861FF",
+    group = "Water Source Site",
+    fillOpacity = 0.8,
+    popup = ~paste0("<b>Tributary:</b> Cache Creek") 
+    ) %>%
   addCircleMarkers(
     data = proj_pts,
     lng = ~Lon, lat = ~Lat,
@@ -79,23 +183,51 @@ leaflet(rest_polys) %>%
                     ifelse(DOBO=="p", "(partial) - ", "")) 
     )%>%
   addLayersControl(
-    baseGroups = c("Main Site"),
-    overlayGroups = c("Fish Only Site", "Restoration Projects"),
+    overlayGroups = c("Water Source Site", "Main Site", "Fish Only Site", "Restoration Projects"),
     options = layersControlOptions(collapsed = FALSE)
   ) %>% 
   setView(lat = 38.45, lng = -121.6, zoom = 9)
 ```
-Heatmap
+Heatmaps
 =====================================
+Col {data-width='25%'}
+-------------------------------------
+### 
+The heat maps depict point water quality measurements across sites over time.
 
-Water‑Quality Heat Map
+- Zoop score: qualitative assay of zooplankton density, exponential from 1-5
+
+- SPC: specific conductivity
+
+- Chl: chlorophyll-a
+
+- DO: dissolved oxygen
+
+- Turb: turbidity
+
+- FDOM: fluorescent dissolved organic matter
+
+
+What do you notice?
+
+- Site differences
+
+- Changes across (or in a few) sites at certain points
+
+- Correlating variables
+
+- Comparisons to tributaries (FWBN, KLWW, CCSYB)
+
+Col {data-width='75%'}
+-------------------------------------
+### 
 ```{r}
 knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_02.png")
 ```
 
-Logger Data
+Logger Data (dygraph)
 =====================================
-
+### kill it... :,(     </3     NOOOOOOOOOO !!!
 Continuous Water Quality Data (may need to refresh and change zoom for view)
 
 ### 
@@ -140,9 +272,19 @@ htmltools::tagList(dy_plts[5])
 htmltools::tagList(dy_plts[6])
 htmltools::tagList(dy_plts[7])
 ```
-Logger Data (plotly)
+Logger Data
 =====================================
+Col {data-width='25%'}
+-------------------------------------
+### 
+These are continuous time series of temperature, dissolved oxygen, and specific conductivity from our loggers.
 
+Select which sites to display by messing with the legend!
+
+Notice how sites follow each other closely or highly vary at times.
+
+Col {data-width='75%'}
+-------------------------------------
 ### 
 ```{r}
 library(dplyr)
@@ -246,17 +388,43 @@ make_all_station_plots()
 
 PCA animation
 =====================================
+Col {data-width='25%'}
+-------------------------------------
+### 
+PCA (principal component analysis) simplifies multiple variables into components. Here, we took 6 water quality parameters into two components (there are more these explain most of the variance and are easy to visualize).
 
-Water‑Quality PCA
+To interpret, each parameter has a vector showing its axis. For example, points going toward the SPC vector have higher SPC. We can thus reference the actual parameter value of each point while being able to compare them to each other on this 2D space. Essentially, points closer together are more similar.
+
+We have general areas of the main tributaries mapped out to see how points move between them across time. STTD in particular is highlighted as it's a downstream site and very influenced by how each tributary is flowing.On the right are plots showing tributary flow to compare with how sites respond accordingly.
+
+Col {data-width='75%'}
+-------------------------------------
+### 
 ```{r}
 knitr::include_graphics("../Output/Figures/pca_flow_horizontal2.gif")
 ```
 
 3D PCA Cylinders
 =====================================
+Col {data-width='25%'}
+-------------------------------------
+### (See more PCA info at the PCA animation tab!)
+In addition to the two principle components, an axis for time shows how sites change throughout the season. Time is going from down to up! As a still figure, you can compare how sites vary and move across tributaries at the same time.
 
+You can drag the screen to change the perspective and select which sites/paths (points/lines) are visible from the legend.
+
+Col {data-width='75%'}
+-------------------------------------
+### colors will be changed! soon...
 ```{r}
 # --- Load or prepare pc_score and trib_stats before this chunk ---
+cyl_col <- c("#B63679FF",  "#440154FF",  "#482878FF", "#453581FF",  "#FB8861FF",
+              "#34618DFF", "#2B748EFF",  "#24878EFF", "#1F998AFF", "#40BC72FF",
+              "#67CC5CFF",  "#73A32F", "#CBE11EFF", "#FDE725FF")
+cyl_col <- setNames(cyl_col, c("FWBN", "FW1", "KLWW","KNG3", "CCSYB",
+              "CNW","RD22", "YBLR4", "SB4", "AL0",
+              "LIS", "STTD", "TEW", "TER"))
+
 # PCA for point wq ----
 wqp <- readxl::read_excel("../Data/tabular/YBLTE_point_wq.xlsx")
 
@@ -311,10 +479,6 @@ pc_score <- pc_score[order(pc_score$Sitefac, pc_score$week),]
 pc_score$pc1_next <- c(pc_score$PC1[-1], NA)
 pc_score$pc2_next <- c(pc_score$PC2[-1], NA)
 
-# calculate convex hull by site
-conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subset(select=-c(week))
-
-
 tribs <- c("CCSYB", "KLWW", "FWBN")
 
 trib_stats <- pc_score %>%
@@ -360,6 +524,7 @@ p <- plot_ly() %>%
     data = pc_score,
     x = ~PC1, y = ~PC2, z = ~week,
     color = ~Sitefac,
+    colors = cyl_col,
     type = "scatter3d",
     mode = "markers",
     marker = list(size = 3)
@@ -394,6 +559,7 @@ for(i in 1:nrow(trib_stats)) {
       type = "mesh3d",
       opacity = 0.25,
       color = t$Sitefac,
+      colors = cyl_col,
       name = paste(t$Sitefac, "region")
     )
 }
@@ -406,6 +572,8 @@ for(s in unique(pc_score$Sitefac)) {
       x = ~PC1,
       y = ~PC2,
       z = ~week,
+      color = ~Sitefac,
+      colors = cyl_col,
       type = "scatter3d",
       mode = "lines",
       line = list(width = 4),
@@ -420,15 +588,34 @@ p
 
 Dynamic Time Warping Analysis
 =====================================
+Col {data-width='25%'}
+-------------------------------------
+### 
+Dynamic time warping (DTW) takes data in different time frames and transforms them to the same frame by where they are similar. DTW allows us to compare each site across the entire season.
 
+The matrix directly compares each site by distance/difference (lower=similar). Based on distances, sites form 3 clusters that you can see from the tree on the top/left sides or color gradients. Why did they cluster?
+
+1. YBLR4, CCSYB, CNW, SB4, FWBN, FW1
+2. TEW
+3. RD22, STTD, AL0, LIS, TER, KLWW, KNG3
+
+Col {data-width='75%'}
+-------------------------------------
+### 
 ```{r}
 knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_DTW_clust_mv03.png")
 ```
 
 End member mixing analysis
 =====================================
+Col {data-width='25%'}
+-------------------------------------
+### 
+End member mixing analysis (EMMA) calculates the proportion of each water source per site. Our calculations were based on SPC and FDOM. You can compare EMMA with flow directly here to see discrepancy between sites.
 
-End member mixing analysis (EMMA)
+Col {data-width='75%'}
+-------------------------------------
+### 
 ```{r}
 knitr::include_graphics("../Output/Figures/YBLTE_EMMA_01.png")
 ```
