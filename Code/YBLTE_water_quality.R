@@ -649,8 +649,11 @@ conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subse
 # All sites with conv hulls
 (pcaplot1 <- ggplot()+
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
-  geom_polygon(data=conv_hull, aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
-               alpha=0.1)+
+  # geom_polygon(data=conv_hull, aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
+  #              alpha=0.1)+
+  stat_ellipse(data = pc_score %>%
+                subset(select = -c(week)), geom = "polygon",
+              aes(x = PC1, y = PC2, fill = Sitefac), alpha=0.1) +
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
                alpha=0.5, color="black", linewidth=0.8)+
   ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
@@ -666,15 +669,18 @@ conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subse
 
 # All sites with only tributary conv hulls
 (pcaplot2 <- ggplot()+
-    geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
-    geom_polygon(data=conv_hull, 
-                 aes(x=PC1, y=PC2, fill=Sitefac),
-                 alpha=0.0, linewidth = NULL)+
-    geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
-                 aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
-                 alpha=0.1)+
+    # geom_polygon(data=conv_hull, 
+    #              aes(x=PC1, y=PC2, fill=Sitefac),
+    #              alpha=0.0, linewidth = NULL)+
+    # geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
+    #              aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
+    #              alpha=0.2)+
+    stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
+                   subset(select = -c(week)), geom = "polygon",
+                 aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.2) +
     geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
                  alpha=0.5, color="black", linewidth=0.8)+
+    geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac))+
     ggrepel::geom_label_repel(data=pc_load_scaled, aes(x=PC1, y=PC2),
                               fill="dimgrey", color="white", 
                               segment.color="dimgrey", alpha=0.8,
@@ -705,9 +711,12 @@ pc_cdec <- left_join(pc_score, pc_cdec, by="weekDate")
 pc_cdec$Site_no <- factor(pc_cdec$Site_no, )
 
 (pcaplot3 <- ggplot()+
-    geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
-                aes(x=PC1, y=PC2, fill=Sitefac), color=NA,
-                alpha=0.2)+
+    # geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
+    #             aes(x=PC1, y=PC2, fill=Sitefac), color=NA,
+    #             alpha=0.2)+
+    stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
+                   subset(select = -c(week)), geom = "polygon",
+                 aes(x = PC1, y = PC2, fill = Sitefac), alpha=0.2) +
     geom_point(data=pc_cdec, 
                aes(x=PC1, y=PC2, color=Site_no, shape=Sitefac))+
     geom_point(data=pc_cdec %>% filter(Sitefac %in% c("SB4", "STTD", "TEW")), 
@@ -745,70 +754,12 @@ dev.off()
 
 tribs <- c("CCSYB", "KLWW", "FWBN")
 
-# Compute convex hull area for each tributary
-trib_stats <- pc_score %>%
-  filter(Sitefac %in% tribs) %>%
-  group_by(Sitefac) %>%
-  summarise(
-    geometry = st_convex_hull(st_union(st_as_sf(., coords = c("PC1","PC2"), crs = 4326)))
-  ) %>%
-  mutate(
-    area = as.numeric(st_area(geometry)),
-    radius = sqrt(area / pi),   # convert area to equivalent circle radius
-    cx = st_coordinates(st_centroid(geometry))[1],
-    cy = st_coordinates(st_centroid(geometry))[2]
-  )
-
-make_cylinder <- function(cx, cy, r, zmin, zmax, n = 60) {
-  theta <- seq(0, 2*pi, length.out = n)
-  
-  # circles
-  x_bottom <- cx + r * cos(theta)
-  y_bottom <- cy + r * sin(theta)
-  z_bottom <- rep(zmin, n)
-  
-  x_top <- cx + r * cos(theta)
-  y_top <- cy + r * sin(theta)
-  z_top <- rep(zmax, n)
-  
-  # combine vertices
-  x <- c(x_bottom, x_top)
-  y <- c(y_bottom, y_top)
-  z <- c(z_bottom, z_top)
-  
-  # build side faces
-  i <- c()
-  j <- c()
-  k <- c()
-  
-  for (t in 1:(n-1)) {
-    # bottom triangle
-    i <- c(i, t)
-    j <- c(j, t+1)
-    k <- c(k, t + n)
-    
-    # top triangle
-    i <- c(i, t+1)
-    j <- c(j, t+1 + n)
-    k <- c(k, t + n)
-  }
-  
-  # close the cylinder
-  i <- c(i, n, 1, n)
-  j <- c(j, 1, 1 + n, 1 + n)
-  k <- c(k, n + n, n + 1, n + n)
-  
-  list(x = x, y = y, z = z, i = i-1, j = j-1, k = k-1)
-}
-
 trib_stats <- pc_score %>%
   filter(Sitefac %in% tribs) %>%
   group_by(Sitefac) %>%
   group_modify(~{
     pts <- st_as_sf(.x, coords = c("PC1","PC2"), crs = NA)
-    
-    hull <- st_convex_hull(st_combine(pts))   # <-- correct way
-    
+    hull <- st_convex_hull(st_combine(pts))
     tibble(
       geometry = hull,
       area = as.numeric(st_area(hull)),
@@ -818,33 +769,54 @@ trib_stats <- pc_score %>%
     )
   })
 
+make_cylinder <- function(cx, cy, r, zmin, zmax, n = 60) {
+  theta <- seq(0, 2*pi, length.out = n)
+  x_bottom <- cx + r * cos(theta)
+  y_bottom <- cy + r * sin(theta)
+  z_bottom <- rep(zmin, n)
+  x_top <- cx + r * cos(theta)
+  y_top <- cy + r * sin(theta)
+  z_top <- rep(zmax, n)
+  x <- c(x_bottom, x_top)
+  y <- c(y_bottom, y_top)
+  z <- c(z_bottom, z_top)
+  i <- c(); j <- c(); k <- c()
+  for (t in 1:(n-1)) {
+    i <- c(i, t, t+1)
+    j <- c(j, t+1, t+1+n)
+    k <- c(k, t+n, t+n)
+  }
+  i <- c(i, n, 1, n)
+  j <- c(j, 1, 1+n, 1+n)
+  k <- c(k, n+n, n+1, n+n)
+  list(x = x, y = y, z = z, i = i-1, j = j-1, k = k-1)
+}
+
 p <- plot_ly() %>%
   add_trace(
     data = pc_score,
     x = ~PC1, y = ~PC2, z = ~week,
     color = ~Sitefac,
+    colors = plotly_col,
     type = "scatter3d",
     mode = "markers",
     marker = list(size = 3)
-  )
-p <- p %>%
+  ) %>%
   layout(
     scene = list(
       xaxis = list(title = "PC1"),
       yaxis = list(title = "PC2"),
       zaxis = list(title = "Week"),
       aspectmode = "manual",
-      aspectratio = list(
-        x = 2,   # widen x axis
-        y = 2,   # widen y axis
-        z = 0.7  # compress z axis
-      )
+      aspectratio = list(x = 2, y = 2, z = 0.7)
     )
   )
 
+trib_cols <- c("#B63679FF","#482878FF", "#FB8861FF")
+
 for(i in 1:nrow(trib_stats)) {
   t <- trib_stats[i, ]
-  
+  trib_col <- trib_cols[i]
   cyl <- make_cylinder(
     cx = t$cx,
     cy = t$cy,
@@ -852,7 +824,6 @@ for(i in 1:nrow(trib_stats)) {
     zmin = min(pc_score$week),
     zmax = max(pc_score$week)
   )
-  
   p <- p %>%
     add_trace(
       x = cyl$x,
@@ -863,43 +834,21 @@ for(i in 1:nrow(trib_stats)) {
       k = cyl$k,
       type = "mesh3d",
       opacity = 0.25,
-      color = t$Sitefac,
+      facecolor = rep(trib_col, length(cyl$i)),
       name = paste(t$Sitefac, "region")
     )
-  
 }
 
-p <- p %>%
-  layout(
-    title = "3D PCA with Tributary Cylinders",
-    scene = list(
-      xaxis = list(title = "PC1"),
-      yaxis = list(title = "PC2"),
-      zaxis = list(title = "Week")
-    )
-  )
-
-p <- p %>%
-  add_trace(
-    x = cyl$x,
-    y = cyl$y,
-    z = cyl$z,
-    type = "mesh3d",
-    opacity = 0.25,
-    color = t$Sitefac,
-    name = paste(t$Sitefac, "region")
-  )
-for(s in c("STTD", "LIS", "AL0")) {
-  df <- pc_score %>%
-    filter(Sitefac == s) %>%
-    arrange(week)
-  
+for(s in unique(pc_score$Sitefac)) {
+  df <- pc_score %>% filter(Sitefac == s) %>% arrange(week)
   p <- p %>%
     add_trace(
       data = df,
       x = ~PC1,
       y = ~PC2,
       z = ~week,
+      color = ~Sitefac,
+      colors = plotly_col,
       type = "scatter3d",
       mode = "lines",
       line = list(width = 4),
@@ -915,8 +864,11 @@ p
 ### PCA animation plots, will go by week (starts at 2 where no missing data) ----
 pcaplots <- ggplot()+
   # Conv hulls for tributaries
-  geom_polygon(data=conv_hull%>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")), 
-               aes(x=PC1, y=PC2, fill=Sitefac), alpha=0.3)+
+  # geom_polygon(data=conv_hull%>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")), 
+  #              aes(x=PC1, y=PC2, fill=Sitefac), alpha=0.3)+
+  stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
+                 subset(select = -c(week)), geom="polygon",
+               aes(x = PC1, y = PC2, fill = Sitefac), alpha=0.2) +
   # Contributing variables to PC (lines)
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
                alpha=0.2, color="black", linewidth=0.8)+
@@ -932,9 +884,6 @@ pcaplots <- ggplot()+
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac, 
              size=ifelse(Sitefac %in% c("FWBN", "KLWW", "CCSYB"), 2, 1)), stroke=2,
              alpha = 0.7)+
-  # stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
-  #                subset(select = -c(week)),
-  #              aes(x = PC1, y = PC2, color = Sitefac)) +  
   labs(title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
@@ -945,8 +894,11 @@ pcaplots <- ggplot()+
 # Highlights STTD
 pcaplots_sttd <- ggplot()+
   # Conv hulls for tributaries
-  geom_polygon(data=conv_hull%>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")), 
-               aes(x=PC1, y=PC2, fill=Sitefac), alpha=0.3)+
+  # geom_polygon(data=conv_hull%>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")), 
+  #              aes(x=PC1, y=PC2, fill=Sitefac), alpha=0.3)+
+  stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
+                 subset(select = -c(week)), geom="polygon",
+               aes(x = PC1, y = PC2, fill = Sitefac), alpha=0.2) +
   # Contributing variables to PC (lines)
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
                alpha=0.2, color="black", linewidth=0.8)+
@@ -966,9 +918,6 @@ pcaplots_sttd <- ggplot()+
   geom_point(data=pc_score, aes(x=PC1, y=PC2, color=Sitefac, shape=Sitefac, 
                                 size=ifelse(Sitefac %in% c("FWBN", "KLWW", "CCSYB", "STTD"), 2, 1)), stroke=2,
              alpha = 0.7)+
-  # stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
-  #                subset(select = -c(week)),
-  #              aes(x = PC1, y = PC2, color = Sitefac)) +  
   labs(title = "Point Water Quality PCA during Week {round(frame_time, 0)}",
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
@@ -979,10 +928,13 @@ pcaplots_sttd <- ggplot()+
 # Highlights LEBLS
 pcaplots_lebls <- ggplot()+
   # Convex hulls for tributaries
-  geom_polygon(
-    data = conv_hull %>% filter(Sitefac %in% c("FWBN","KLWW","CCSYB")),
-    aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.3
-  ) +
+  # geom_polygon(
+  #   data = conv_hull %>% filter(Sitefac %in% c("FWBN","KLWW","CCSYB")),
+  #   aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.3
+  # ) +
+  stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
+                 subset(select = -c(week)), geom="polygon",
+               aes(x = PC1, y = PC2, fill = Sitefac), alpha=0.2) +
   # Contributing variables to PC (lines)
   geom_segment(
     data = pc_load_scaled,

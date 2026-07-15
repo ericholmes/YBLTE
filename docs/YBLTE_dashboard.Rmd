@@ -64,6 +64,12 @@ animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
                                           "STTD" = "#73A32F", 
                                           "TEW" = "#CBE11EFF",
                                           "TER" = "#FDE725FF"))
+plotly_col <- c("#B63679FF",  "#440154FF",  "#482878FF", "#453581FF",  "#FB8861FF",
+              "#34618DFF", "#2B748EFF",  "#24878EFF", "#1F998AFF", "#40BC72FF",
+              "#67CC5CFF",  "#73A32F", "#CBE11EFF", "#FDE725FF")
+plotly_col <- setNames(cyl_col, c("FWBN", "FW1", "KLWW","KNG3", "CCSYB",
+              "CNW","RD22", "YBLR4", "SB4", "AL0",
+              "LIS", "STTD", "TEW", "TER"))
 
 # Load spatial objects from your saved Rdata file
 load("../Data/spatial/Yolo_map_data.Rdata")
@@ -92,6 +98,11 @@ rest_polys <- rbind(polygons[,c("project_name", "project_type","Project_Status")
 
 sf::sf_use_s2(FALSE)
 rest_polys$acres <- round(as.numeric(st_area(rest_polys)) * 0.00024711, 1)
+
+# Get logger data
+load("../Data/YBLTE_logger.RData")
+startdate <- as.POSIXct("2025-11-01")
+enddate <- enddate <- as.POSIXct("2026-05-31")
 
 ```
 
@@ -232,10 +243,6 @@ Continuous Water Quality Data (may need to refresh and change zoom for view)
 
 ### 
 ```{r}
-load("../Data/YBLTE_logger.RData")
-startdate <- as.POSIXct("2025-11-01")
-enddate <- enddate <- as.POSIXct("2026-05-31")
-
 dy_plts <- list()
 i = 1
 
@@ -287,15 +294,9 @@ Col {data-width='75%'}
 -------------------------------------
 ### 
 ```{r}
-library(dplyr)
-library(plotly)
-startdate <- as.POSIXct("2025-11-01")
-enddate <- enddate <- as.POSIXct("2026-05-31")
 make_all_station_plots <- function() {
   
   stations <- sort(unique(dobodat$station))
-  station_colors <- RColorBrewer::brewer.pal(n = length(stations), "Dark2")
-  names(station_colors) <- stations
   
   # Temperature panel
   p_temp <- plot_ly(type = "scatter", mode = "lines")
@@ -308,16 +309,18 @@ make_all_station_plots <- function() {
         x = ~datetime, y = ~temp_c,
         name = s,
         legendgroup = s,
+        opacity = 0.7,
         showlegend = TRUE,                 # only here
-        line = list(color = station_colors[s])
+        line = list(color = plotly_col[s])
       ) %>% 
       add_trace(
         data = df_sb4,
         x = ~datetime, y = ~temp_c,
         name = s,
         legendgroup = s,
+        opacity = 0.7,
         showlegend = FALSE,                # hide duplicate legend entries                
-        line = list(color = station_colors[s])
+        line = list(color = plotly_col[s])
       )
   }
   p_temp <- p_temp %>% layout(yaxis = list(title = "Temp (°C)"))
@@ -333,16 +336,18 @@ make_all_station_plots <- function() {
         x = ~datetime, y = ~do_mgl,
         name = s,
         legendgroup = s,
+        opacity = 0.7,
         showlegend = FALSE,                # hide duplicate legend entries
-        line = list(color = station_colors[s])
+        line = list(color = plotly_col[s])
       ) %>% 
       add_trace(
         data = df_sb4,
         x = ~datetime, y = ~do_mgl,
         name = s,
         legendgroup = s,
+        opacity = 0.7,
         showlegend = FALSE,                 
-        line = list(color = station_colors[s])
+        line = list(color = plotly_col[s])
       )
   }
   p_do <- p_do %>% layout(yaxis = list(title = "DO (mg/L)"))
@@ -358,16 +363,18 @@ make_all_station_plots <- function() {
         x = ~datetime, y = ~spc,
         name = s,
         legendgroup = s,
+        opacity = 0.7,
         showlegend = FALSE,                # hide duplicate legend entries
-        line = list(color = station_colors[s])
+        line = list(color = plotly_col[s])
       ) %>%
       add_trace(
         data = df_sb4,
         x = ~datetime, y = ~spc,
         name = s,
         legendgroup = s,
+        opacity = 0.7,
         showlegend = FALSE,                # hide duplicate legend entries
-        line = list(color = station_colors[s])
+        line = list(color = plotly_col[s])
       )
     
   }
@@ -415,16 +422,8 @@ You can drag the screen to change the perspective and select which sites/paths (
 
 Col {data-width='75%'}
 -------------------------------------
-### colors will be changed! soon...
+### 
 ```{r}
-# --- Load or prepare pc_score and trib_stats before this chunk ---
-cyl_col <- c("#B63679FF",  "#440154FF",  "#482878FF", "#453581FF",  "#FB8861FF",
-              "#34618DFF", "#2B748EFF",  "#24878EFF", "#1F998AFF", "#40BC72FF",
-              "#67CC5CFF",  "#73A32F", "#CBE11EFF", "#FDE725FF")
-cyl_col <- setNames(cyl_col, c("FWBN", "FW1", "KLWW","KNG3", "CCSYB",
-              "CNW","RD22", "YBLR4", "SB4", "AL0",
-              "LIS", "STTD", "TEW", "TER"))
-
 # PCA for point wq ----
 wqp <- readxl::read_excel("../Data/tabular/YBLTE_point_wq.xlsx")
 
@@ -524,7 +523,7 @@ p <- plot_ly() %>%
     data = pc_score,
     x = ~PC1, y = ~PC2, z = ~week,
     color = ~Sitefac,
-    colors = cyl_col,
+    colors = plotly_col,
     type = "scatter3d",
     mode = "markers",
     marker = list(size = 3)
@@ -539,8 +538,11 @@ p <- plot_ly() %>%
     )
   )
 
+trib_cols <- c("#B63679FF","#482878FF", "#FB8861FF")
+
 for(i in 1:nrow(trib_stats)) {
   t <- trib_stats[i, ]
+  trib_col <- trib_cols[i]
   cyl <- make_cylinder(
     cx = t$cx,
     cy = t$cy,
@@ -558,8 +560,7 @@ for(i in 1:nrow(trib_stats)) {
       k = cyl$k,
       type = "mesh3d",
       opacity = 0.25,
-      color = t$Sitefac,
-      colors = cyl_col,
+      facecolor = rep(trib_col, length(cyl$i)),
       name = paste(t$Sitefac, "region")
     )
 }
@@ -573,7 +574,7 @@ for(s in unique(pc_score$Sitefac)) {
       y = ~PC2,
       z = ~week,
       color = ~Sitefac,
-      colors = cyl_col,
+      colors = plotly_col,
       type = "scatter3d",
       mode = "lines",
       line = list(width = 4),
