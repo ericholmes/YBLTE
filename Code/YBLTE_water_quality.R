@@ -754,6 +754,15 @@ dev.off()
 
 tribs <- c("CCSYB", "KLWW", "FWBN")
 
+trib_cols <- c("#B63679FF","#482878FF", "#FB8861FF")
+
+plotly_col <- c("#B63679FF",  "#440154FF",  "#482878FF", "#453581FF",  "#FB8861FF",
+                "#34618DFF", "#2B748EFF",  "#24878EFF", "#1F998AFF", "#40BC72FF",
+                "#67CC5CFF",  "#73A32F", "#CBE11EFF", "#FDE725FF")
+plotly_col <- setNames(plotly_col, c("FWBN", "FW1", "KLWW","KNG3", "CCSYB",
+                                  "CNW","RD22", "YBLR4", "SB4", "AL0",
+                                  "LIS", "STTD", "TEW", "TER"))
+
 trib_stats <- pc_score %>%
   filter(Sitefac %in% tribs) %>%
   group_by(Sitefac) %>%
@@ -800,7 +809,8 @@ p <- plot_ly() %>%
     colors = plotly_col,
     type = "scatter3d",
     mode = "markers",
-    marker = list(size = 3)
+    marker = list(size = 3),
+    opacity = 0.7
   ) %>%
   layout(
     scene = list(
@@ -812,7 +822,6 @@ p <- plot_ly() %>%
     )
   )
 
-trib_cols <- c("#B63679FF","#482878FF", "#FB8861FF")
 
 for(i in 1:nrow(trib_stats)) {
   t <- trib_stats[i, ]
@@ -833,7 +842,7 @@ for(i in 1:nrow(trib_stats)) {
       j = cyl$j,
       k = cyl$k,
       type = "mesh3d",
-      opacity = 0.25,
+      opacity = 0.15,
       facecolor = rep(trib_col, length(cyl$i)),
       name = paste(t$Sitefac, "region")
     )
@@ -852,10 +861,15 @@ for(s in unique(pc_score$Sitefac)) {
       type = "scatter3d",
       mode = "lines",
       line = list(width = 4),
+      opacity = 0.5,
       name = paste(s, "trajectory"),
       showlegend = TRUE
     )
 }
+
+p <- p %>% layout(
+  legend = list(y = 1, itemsizing = "constant")
+)
 
 p
 
@@ -1094,7 +1108,7 @@ for(i in 2:100){
 animation_lebls <- image_append(c(pcgif_lebls[1],flowgif[1], pflowgif[1]), stack = T)
 for(i in 2:100){
   combined_gif <- image_append(c(pcgif_lebls[i],flowgif[i], pflowgif[i]), stack = T)
-  animation <- c(animation, combined_gif)
+  animation_lebls <- c(animation_lebls, combined_gif)
 }
 
 # Combine pca and flow animations horizontally
@@ -1112,7 +1126,7 @@ flow_resized  <- image_resize(flowgif[1],  paste0(pc_width, "x", half_height, "!
 pflow_resized <- image_resize(pflowgif[1], paste0(pc_width, "x", half_height, "!"))
 
 right_col <- image_append(c(flow_resized, pflow_resized), stack = TRUE)
-animation <- image_append(c(pcgif[1], right_col), stack = FALSE)
+animation_h <- image_append(c(pcgif[1], right_col), stack = FALSE)
 animation_lebls <- image_append(c(pcgif_lebls[1], right_col), stack = FALSE)
 
 # Loop through remaining frames
@@ -1125,7 +1139,7 @@ for(i in 2:nframes){
   
   combined <- image_append(c(pcgif[i], right_col), stack = FALSE)
   
-  animation <- c(animation, combined)
+  animation_h <- c(animation_h, combined)
 }
 
 # Loop through remaining frames
@@ -1143,11 +1157,11 @@ for(i in 2:nframes){
 
 # Save as gif
 anim_save("Output/Figures/pca_flow.gif", animation)
-anim_save("Output/Figures/pca_flow_horizontal2.gif", animation)
+anim_save("Output/Figures/pca_flow_horizontal2.gif", animation_h)
 anim_save("Output/Figures/pca_flow_horizontal2_lebls.gif", animation_lebls)
 
 # Save as mp4
 anim_save("Output/Figures/pca_flow.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
-anim_save("Output/Figures/pca_flow_horizontal2.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
+anim_save("Output/Figures/pca_flow_horizontal2.mp4", animation_h, renderer = ffmpeg_renderer(codec = "libx264"))
 anim_save("Output/Figures/pca_flow_horizontal2_lebls.mp4", animation_lebls, renderer = ffmpeg_renderer(codec = "libx264"))
 

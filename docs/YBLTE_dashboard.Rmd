@@ -67,7 +67,7 @@ animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
 plotly_col <- c("#B63679FF",  "#440154FF",  "#482878FF", "#453581FF",  "#FB8861FF",
               "#34618DFF", "#2B748EFF",  "#24878EFF", "#1F998AFF", "#40BC72FF",
               "#67CC5CFF",  "#73A32F", "#CBE11EFF", "#FDE725FF")
-plotly_col <- setNames(cyl_col, c("FWBN", "FW1", "KLWW","KNG3", "CCSYB",
+plotly_col <- setNames(plotly_col, c("FWBN", "FW1", "KLWW","KNG3", "CCSYB",
               "CNW","RD22", "YBLR4", "SB4", "AL0",
               "LIS", "STTD", "TEW", "TER"))
 
@@ -108,7 +108,7 @@ enddate <- enddate <- as.POSIXct("2026-05-31")
 
 Overview {data-orientation=rows}
 =====================================
-Row {data-height='30%'}
+Row {data-height='40%'}
 -------------------------------------
 ###
 Hello!
@@ -121,7 +121,7 @@ Dominating water sources: Sacramento River, Colusa Basin, Cache Creek, Putah Cre
 
 Explore our dashboard to see what we found!
 
-Row {data-height='70%'}
+Row {data-height='60%'}
 -------------------------------------
 ### science in action!
 ```{r}
@@ -385,7 +385,7 @@ make_all_station_plots <- function() {
           nrows = 3,
           shareX = TRUE,
           titleY = TRUE) %>%
-  layout(xaxis = list(range = c(startdate, enddate)))
+  layout(xaxis = list(title = NA, range = c(startdate, enddate)))
 }
 
 
@@ -393,9 +393,9 @@ make_all_station_plots()
 
 ```
 
-PCA animation
+PCA animation {data-orientation=rows}
 =====================================
-Col {data-width='25%'}
+Col {data-height='25%'}
 -------------------------------------
 ### 
 PCA (principal component analysis) simplifies multiple variables into components. Here, we took 6 water quality parameters into two components (there are more these explain most of the variance and are easy to visualize).
@@ -404,7 +404,7 @@ To interpret, each parameter has a vector showing its axis. For example, points 
 
 We have general areas of the main tributaries mapped out to see how points move between them across time. STTD in particular is highlighted as it's a downstream site and very influenced by how each tributary is flowing.On the right are plots showing tributary flow to compare with how sites respond accordingly.
 
-Col {data-width='75%'}
+Col {data-height='75%'}
 -------------------------------------
 ### 
 ```{r}
@@ -480,6 +480,8 @@ pc_score$pc2_next <- c(pc_score$PC2[-1], NA)
 
 tribs <- c("CCSYB", "KLWW", "FWBN")
 
+trib_cols <- c("#B63679FF","#482878FF", "#FB8861FF")
+
 trib_stats <- pc_score %>%
   filter(Sitefac %in% tribs) %>%
   group_by(Sitefac) %>%
@@ -526,7 +528,8 @@ p <- plot_ly() %>%
     colors = plotly_col,
     type = "scatter3d",
     mode = "markers",
-    marker = list(size = 3)
+    marker = list(size = 3),
+    opacity = 0.7
   ) %>%
   layout(
     scene = list(
@@ -538,7 +541,6 @@ p <- plot_ly() %>%
     )
   )
 
-trib_cols <- c("#B63679FF","#482878FF", "#FB8861FF")
 
 for(i in 1:nrow(trib_stats)) {
   t <- trib_stats[i, ]
@@ -559,7 +561,7 @@ for(i in 1:nrow(trib_stats)) {
       j = cyl$j,
       k = cyl$k,
       type = "mesh3d",
-      opacity = 0.25,
+      opacity = 0.15,
       facecolor = rep(trib_col, length(cyl$i)),
       name = paste(t$Sitefac, "region")
     )
@@ -578,10 +580,15 @@ for(s in unique(pc_score$Sitefac)) {
       type = "scatter3d",
       mode = "lines",
       line = list(width = 4),
+      opacity = 0.5,
       name = paste(s, "trajectory"),
       showlegend = TRUE
     )
 }
+
+p <- p %>% layout(
+  legend = list(y = 1, itemsizing = "constant")
+)
 
 p
 
