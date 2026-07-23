@@ -1203,5 +1203,5 @@ cowplot::plot_grid(cowplot::plot_grid(tribflowplot1 + theme(axis.text.x = elemen
                                       chlplotdate + theme(axis.text.x = element_blank()),
                                       zoopplotdate,
                                       align  = "v", ncol = 1))
-# notes for next time; line up x axis/date range, mark every month; updated tew color so update all color plots in github;
-# combine all plots for poster! everything lined up and looks good :) good labels, send to eric :D
+# Save output, need to adjust proportions
+# write code to save output
