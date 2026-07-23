@@ -40,7 +40,7 @@ animCol <- scale_color_manual(values = c("KNL" = "#440154FF",
                                           "AL0" = "#40BC72FF",
                                           "LIS" = "#67CC5CFF", 
                                           "STTD" = "#73A32F", 
-                                          "TEW" = "#CBE11EFF",
+                                          "TEW" = "#ADE11E",
                                           "TER" = "#FDE725FF"))
 animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
                                           "RCS" = "#482878FF",
@@ -62,11 +62,11 @@ animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
                                           "AL0" = "#40BC72FF",
                                           "LIS" = "#67CC5CFF", 
                                           "STTD" = "#73A32F", 
-                                          "TEW" = "#CBE11EFF",
+                                          "TEW" = "#ADE11E",
                                           "TER" = "#FDE725FF"))
 plotly_col <- c("#B63679FF",  "#440154FF",  "#482878FF", "#453581FF",  "#FB8861FF",
               "#34618DFF", "#2B748EFF",  "#24878EFF", "#1F998AFF", "#40BC72FF",
-              "#67CC5CFF",  "#73A32F", "#CBE11EFF", "#FDE725FF")
+              "#67CC5CFF",  "#73A32F", "#ADE11E", "#FDE725FF")
 plotly_col <- setNames(plotly_col, c("FWBN", "FW1", "KLWW","KNG3", "CCSYB",
               "CNW","RD22", "YBLR4", "SB4", "AL0",
               "LIS", "STTD", "TEW", "TER"))

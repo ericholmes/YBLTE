@@ -31,7 +31,7 @@ animCol <- scale_color_manual(values = c("KNL" = "#440154FF",
                                           "AL0" = "#40BC72FF",
                                           "LIS" = "#67CC5CFF", 
                                           "STTD" = "#73A32F", 
-                                          "TEW" = "#CBE11EFF",
+                                          "TEW" = "#ADE11E",
                                           "TER" = "#FDE725FF"))
 animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
                                           "RCS" = "#482878FF",
@@ -53,7 +53,7 @@ animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
                                           "AL0" = "#40BC72FF",
                                           "LIS" = "#67CC5CFF", 
                                           "STTD" = "#73A32F", 
-                                          "TEW" = "#CBE11EFF",
+                                          "TEW" = "#ADE11E",
                                           "TER" = "#FDE725FF"))
 
 ## Load point wq data ----
@@ -1044,28 +1044,31 @@ flow_in_time <- cdec_wide %>% filter(Site_no %in% c("RCS", "FRE", "CCY", "PTC"))
   filter(between(Datetime, min(pc_score$Date), max(pc_score$Date))) %>% drop_na(discharge_cfs)
 
 # Flow plot raw
-(tribflowplot1 <- ggplot(flow_in_time, 
+(tribflowplot <- ggplot(flow_in_time, 
                         aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
     geom_line() + animCol +
     theme_bw() + labs(title = "Discharge smoothed", y = "Discharge (cfs)", x = NULL))
 
 # Edited flow plot, allows FRE to go out of frame for other details
-(tribflowplot2 <- ggplot(flow_in_time, 
+(tribflowplot1 <- ggplot(flow_in_time, 
                          aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
     geom_line() + animCol + animFill +
-    # Text for when FRE is out of frame
-    geom_text(data = flow_in_time %>% filter(Site_no=="FRE"),
-             aes(x = as.POSIXct("2025-12-01"),
-             y = max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs),
-             label = ifelse(discharge_cfs>max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs),
-                            paste0("FRE at ", discharge_cfs), "")), show.legend = F) +
     # Fill under line
     geom_ribbon(aes(ymin=min(discharge_cfs),ymax=discharge_cfs, fill=Site_no), 
                 alpha=0.1, outline.type="lower") +
     # Frame limits, allow FRE to break out of frame
     coord_cartesian(ylim=c(min(flow_in_time$discharge_cfs), 
         max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs)), clip = "off") +
-    theme_bw() + labs(title = "Tributary Flow", y = "Discharge (cfs)", x = NULL))
+    theme_bw() + labs(title = "Tributary Flow", y = "Discharge (cfs)",
+                      color = "Water Source", fill = "Water Source", x = NULL))
+
+(tribflowplot2 <- tribflowplot1+
+    # Text for when FRE is out of frame
+    geom_text(data = flow_in_time %>% filter(Site_no=="FRE"),
+             aes(x = as.POSIXct("2025-12-01"),
+             y = max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs),
+             label = ifelse(discharge_cfs>max((flow_in_time %>% filter(Site_no!="FRE"))$discharge_cfs),
+                            paste0("FRE at ", discharge_cfs), "")), show.legend = F))
 
 # Plotting percent flow
 flow_in_time$Date <- as.Date(flow_in_time$Datetime)
@@ -1084,7 +1087,7 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
 # Percent flow plot, stacked bar plot (daily increments)
 pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
   geom_bar(stat = "identity", alpha = 0.9) + animFill +
-  labs(x = NULL, y = "Percent Flow") + theme_bw()
+  labs(x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
 
 # Animate flow and percent flow plots
 flowgif <- animate(
@@ -1165,3 +1168,40 @@ anim_save("Output/Figures/pca_flow.mp4", animation, renderer = ffmpeg_renderer(c
 anim_save("Output/Figures/pca_flow_horizontal2.mp4", animation_h, renderer = ffmpeg_renderer(codec = "libx264"))
 anim_save("Output/Figures/pca_flow_horizontal2_lebls.mp4", animation_lebls, renderer = ffmpeg_renderer(codec = "libx264"))
 
+## Make plot for poster --
+# Stacking flow, logger, then heat map plots
+load("Data/YBLTE_logger.RData")
+
+logtempplt <- ggplot(dobodat, aes(x = datetime, y = temp_c)) + 
+  geom_line(aes(color = station), alpha = 0.7, linewidth = 0.5) +
+  geom_line(data = dobo_sb4, aes(x = datetime, y = temp_c, color = station), alpha = 0.7, linewidth = 0.5) +
+  labs(x = NULL, y = "Temp (°C)", color = NULL) + animCol + theme_bw() +
+  guides(color = "none") + labs(title = "Logger Data") + theme(axis.text.x = element_blank()) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01")))
+logdoplt <- ggplot(dobodat, aes(x = datetime, y = do_mgl)) + 
+  geom_line(aes(color = station), alpha = 0.7, linewidth = 0.5) +
+  geom_line(data = dobo_sb4, aes(x = datetime, y = do_mgl, color = station), alpha = 0.7, linewidth = 0.5) + 
+  labs(x = NULL, y = "DO (mg/L)", color = NULL) + animCol + theme_bw() +
+  guides(color = guide_legend(override.aes = list(linewidth = 3))) + theme(axis.text.x = element_blank()) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01")))
+logecplt <- ggplot(conddat, aes(x = datetime, y = spc)) + 
+  geom_line(aes(color = station), alpha = 0.7, linewidth = 0.5) +
+  geom_line(data = cond_sb4, aes(x = datetime, y = spc, color = station), alpha = 0.7, linewidth = 0.5) + 
+  labs(x = NULL, y = "SPC (µS/cm)", color = NULL) + animCol + theme_bw() +
+  guides(color = "none") + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01")))
+
+cowplot::plot_grid(cowplot::plot_grid(tribflowplot1 + theme(axis.text.x = element_blank()) + 
+                                        scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01"))),
+                                      pflowplot + guides(fill = "none") + 
+                                        scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01"))),
+                                      logtempplt,
+                                      logdoplt,
+                                      logecplt,
+                                      turbplotdate + labs(title = "Point Water Quality") + theme(axis.text.x = element_blank()),
+                                      fdomplotdate,
+                                      chlplotdate + theme(axis.text.x = element_blank()),
+                                      zoopplotdate,
+                                      align  = "v", ncol = 1))
+# notes for next time; line up x axis/date range, mark every month; updated tew color so update all color plots in github;
+# combine all plots for poster! everything lined up and looks good :) good labels, send to eric :D
