@@ -1086,7 +1086,7 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
 
 # Percent flow plot, stacked bar plot (daily increments)
 pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
-  geom_bar(stat = "identity", alpha = 0.9) + animFill +
+  geom_bar(stat = "identity", alpha = 0.9, width = 1) + animFill +
   labs(x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
 
 # Animate flow and percent flow plots
@@ -1167,41 +1167,3 @@ anim_save("Output/Figures/pca_flow_horizontal2_lebls.gif", animation_lebls)
 anim_save("Output/Figures/pca_flow.mp4", animation, renderer = ffmpeg_renderer(codec = "libx264"))
 anim_save("Output/Figures/pca_flow_horizontal2.mp4", animation_h, renderer = ffmpeg_renderer(codec = "libx264"))
 anim_save("Output/Figures/pca_flow_horizontal2_lebls.mp4", animation_lebls, renderer = ffmpeg_renderer(codec = "libx264"))
-
-## Make plot for poster --
-# Stacking flow, logger, then heat map plots
-load("Data/YBLTE_logger.RData")
-
-logtempplt <- ggplot(dobodat, aes(x = datetime, y = temp_c)) + 
-  geom_line(aes(color = station), alpha = 0.7, linewidth = 0.5) +
-  geom_line(data = dobo_sb4, aes(x = datetime, y = temp_c, color = station), alpha = 0.7, linewidth = 0.5) +
-  labs(x = NULL, y = "Temp (°C)", color = NULL) + animCol + theme_bw() +
-  guides(color = "none") + labs(title = "Logger Data") + theme(axis.text.x = element_blank()) +
-  scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01")))
-logdoplt <- ggplot(dobodat, aes(x = datetime, y = do_mgl)) + 
-  geom_line(aes(color = station), alpha = 0.7, linewidth = 0.5) +
-  geom_line(data = dobo_sb4, aes(x = datetime, y = do_mgl, color = station), alpha = 0.7, linewidth = 0.5) + 
-  labs(x = NULL, y = "DO (mg/L)", color = NULL) + animCol + theme_bw() +
-  guides(color = guide_legend(override.aes = list(linewidth = 3))) + theme(axis.text.x = element_blank()) + 
-  scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01")))
-logecplt <- ggplot(conddat, aes(x = datetime, y = spc)) + 
-  geom_line(aes(color = station), alpha = 0.7, linewidth = 0.5) +
-  geom_line(data = cond_sb4, aes(x = datetime, y = spc, color = station), alpha = 0.7, linewidth = 0.5) + 
-  labs(x = NULL, y = "SPC (µS/cm)", color = NULL) + animCol + theme_bw() +
-  guides(color = "none") + 
-  scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01")))
-
-cowplot::plot_grid(cowplot::plot_grid(tribflowplot1 + theme(axis.text.x = element_blank()) + 
-                                        scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01"))),
-                                      pflowplot + guides(fill = "none") + 
-                                        scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = as.Date(c("2025-11-01", "2026-05-01"))),
-                                      logtempplt,
-                                      logdoplt,
-                                      logecplt,
-                                      turbplotdate + labs(title = "Point Water Quality") + theme(axis.text.x = element_blank()),
-                                      fdomplotdate,
-                                      chlplotdate + theme(axis.text.x = element_blank()),
-                                      zoopplotdate,
-                                      align  = "v", ncol = 1))
-# Save output, need to adjust proportions
-# write code to save output
