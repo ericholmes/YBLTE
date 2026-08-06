@@ -11,6 +11,55 @@ library(scales)
 library(plotly)
 library(ggrepel)
 
+# set colors
+
+## Set colors for animations ----
+animCol <- scale_color_manual(values = c("KNL" = "#440154FF",
+                                         "KLG" = "#444444",
+                                         "RCS" = "#482878FF",
+                                         "FRE" = "#B63679FF",
+                                         "YBT" = "#3E4A89FF",
+                                         "CCY" = "#FB8861FF",
+                                         "YBY" = "#31688EFF",
+                                         "PTC" = "#CED483",
+                                         "FWBN" = "#B63679FF", 
+                                         "FW1" = "#440154FF", 
+                                         "KLWW" = "#482878FF",
+                                         "KNG3" = "#453581FF", 
+                                         "CCSYB" = "#FB8861FF",
+                                         "CNW" = "#34618DFF",
+                                         "RD22" = "#2B748EFF", 
+                                         "YBLR4" = "#24878EFF", 
+                                         "SB4" = "#1F998AFF",
+                                         "I80" = "#25AC82FF", 
+                                         "AL0" = "#40BC72FF",
+                                         "LIS" = "#67CC5CFF", 
+                                         "STTD" = "#73A32F", 
+                                         "TEW" = "#ADE11E",
+                                         "TER" = "#FDE725FF"))
+animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
+                                         "RCS" = "#482878FF",
+                                         "FRE" = "#B63679FF",
+                                         "YBT" = "#3E4A89FF",
+                                         "CCY" = "#FB8861FF",
+                                         "YBY" = "#31688EFF",
+                                         "PTC" = "#E0E092",
+                                         "FWBN" = "#B63679FF", 
+                                         "FW1" = "#440154FF", 
+                                         "KLWW" = "#482878FF",
+                                         "KNG3" = "#453581FF", 
+                                         "CCSYB" = "#FB8861FF",
+                                         "CNW" = "#34618DFF",
+                                         "RD22" = "#2B748EFF", 
+                                         "YBLR4" = "#24878EFF", 
+                                         "SB4" = "#1F998AFF",
+                                         "I80" = "#25AC82FF", 
+                                         "AL0" = "#40BC72FF",
+                                         "LIS" = "#67CC5CFF", 
+                                         "STTD" = "#73A32F", 
+                                         "TEW" = "#ADE11E",
+                                         "TER" = "#FDE725FF"))
+
 # 1. Load data ----
 
 zoop26       <- read_excel("Data/tabular/YBLTE_2026_zoop_QC.xlsx", sheet = 2)
@@ -54,7 +103,10 @@ zoop26 <- zoop26 %>%
                        (Rotations * 26873) / 999999)
   )
 
-# 6. CPUE function using your mean(sample.est) logic ----
+ggplot(zoop26, aes(x = Rotations)) + geom_histogram()
+ggplot(zoop26, aes(x = Distance)) + geom_histogram()
+
+# 6. CPUE function usinDistance# 6. CPUE function using your mean(sample.est) logic ----
 
 calc_cpue_density <- function(df) {
   
@@ -125,11 +177,12 @@ zooplong <- calc_cpue_density_pooled(zoop26)
 # dput(zoop26[zoop26$Site == "STTD" & zoop26$Date == as.Date("2025-11-13"),])
 view(zooplong[zooplong$Site == "STTD" & zooplong$Date == as.Date("2025-11-13"),])
 view(zooplongmean[zooplongmean$Site == "STTD" & zooplong$Date == as.Date("2025-11-13"),])
+
 # 7. Group taxa using lookup ----
 
 zooplong <- zooplong %>%
   left_join(
-    zooplookup %>% select(Taxa_identified, Category, Group_finescale, Group_zoop),
+    zooplookup %>% select(Taxa_identified, Category, Group_family, Group_zoop),
     by = c("Species" = "Taxa_identified")
   ) %>%
   rename(group = Group_zoop)
@@ -235,8 +288,9 @@ weekly_bar_by_site <- ggplot(zoop_weekly_group[!(zoop_weekly_group$group %in% c(
     legend.position = "bottom"
   )
 
-png("Output/Figures/Zoop_weekly.png", height = 9, width = 6.5, units = "in", res = 1000, family = "serif")
+png("Output/Figures/Zoop_weekly%02d.png", height = 9, width = 6.5, units = "in", res = 1000, family = "serif")
 weekly_bar_by_site
+weekly_bar_by_site + scale_y_sqrt()
 dev.off()
 
 # 9. NMDS 1: GROUPED TAXA (Category)----
@@ -255,13 +309,13 @@ zoopcast_group <- dcast(
 )
 
 # NMDS prep
-com_group <- decostand(zoopcast_group[, -(1:5)], method = "log")
+com_group <- decostand(zoopcast_group[, -(1:5)], method = "range")
 
-nmds_group <- metaMDS(zoopcast_group[, -(1:5)], autotransform = FALSE,distance = "gower")
+nmds_group <- metaMDS(com_group, autotransform = FALSE)
 
 dist_raw <- vegdist(zoopcast_group[, -(1:5)], method="bray")
 pcoa_raw <- cmdscale(dist_raw, eig=TRUE)
-total_density <- rowSums(com_density)
+
 # Extract site & species scores
 nmds_group_sites <- as.data.frame(scores(nmds_group, display = "sites"))
 nmds_group_sites$Site   <- zoopcast_group$Site
@@ -271,12 +325,14 @@ nmds_group_sites$Region <- zoopcast_group$Region
 nmds_group_species <- as.data.frame(scores(nmds_group, display = "species"))
 nmds_group_species$group <- rownames(nmds_group_species)
 
+png("Output/Figures/Zoop_nmds_groups%02d.png", height = 6, width = 6.5, units = "in", res = 1000, family = "serif")
+
 ggplot() + 
   geom_point(data = nmds_group_sites, aes(x = NMDS1, y = NMDS2, color = Site)) +
   geom_point(data = nmds_group_species, aes(x = NMDS1, y=NMDS2), size = .8) +
   # geom_path(data = nmds_group_sites, aes(x = NMDS1, y = NMDS2, color = Site, group = Site)) +
   geom_text_repel(data=nmds_group_species,aes(x=NMDS1,y=NMDS2,label=group), alpha=0.9, size = 3, force = .1) +
-  scale_color_viridis_d()+ scale_fill_viridis_d() + labs(title = "NMDS - 2016") +
+  scale_color_viridis_d()+ scale_fill_viridis_d() + labs() +
   theme_bw(base_family = "serif") + #theme(legend.position = "none") +
   stat_ellipse(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], 
                aes(x = NMDS1, y = NMDS2, fill = Site, group = Site), geom = "polygon", alpha = .1) +
@@ -284,15 +340,17 @@ ggplot() +
                aes(x = NMDS1, y = NMDS2, color = Site, group = Site), alpha = .5)
 
 ggplot() + 
-  geom_point(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], aes(x = NMDS1, y = NMDS2, color = Site)) +
+  geom_point(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "CNW", "TEW", "SB4"),], 
+             aes(x = NMDS1, y = NMDS2, color = Site, shape = Site)) +
   geom_point(data = nmds_group_species, aes(x = NMDS1, y=NMDS2), size = .8) +
-  geom_path(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], aes(x = NMDS1, y = NMDS2, color = Site, group = Site)) +
+  geom_path(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "CNW", "TEW", "SB4"),], 
+            aes(x = NMDS1, y = NMDS2, color = Site, group = Site)) +
   geom_text_repel(data=nmds_group_species,aes(x=NMDS1,y=NMDS2,label=group), alpha=0.9, size = 3, force = .1) +
-  scale_color_viridis_d()+ scale_fill_viridis_d() + labs(title = "NMDS - 2016") +
+  animCol + animFill +
   theme_bw(base_family = "serif") + #theme(legend.position = "none") +
-  stat_ellipse(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], 
+  stat_ellipse(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "CNW", "TEW", "SB4"),], 
                aes(x = NMDS1, y = NMDS2, fill = Site, group = Site), geom = "polygon", alpha = .1) +
-  stat_ellipse(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], 
+  stat_ellipse(data = nmds_group_sites[nmds_group_sites$Site %in% c("FWBN", "CCSYB", "CNW", "TEW", "SB4"),], 
                aes(x = NMDS1, y = NMDS2, color = Site, group = Site), alpha = .5)
 
 ggplot() + 
@@ -307,32 +365,35 @@ ggplot() +
   stat_ellipse(data = nmds_group_sites, 
                aes(x = NMDS1, y = NMDS2, color = wyjday, group = wyjday), alpha = .5)
 
+dev.off()
+
 # 10. NMDS 2: SPECIES-LEVEL RESOLUTION ----
 
 top_species <- zooplong %>%
-  group_by(Group_finescale) %>%
+  group_by(Group_family) %>%
   summarise(total = sum(Density), .groups = "drop") %>%
   arrange(desc(total)) %>%
   slice_head(n = 25) %>%  # You can adjust this number
-  pull(Group_finescale)
+  pull(Group_family)
 
 zoopsp <- zooplong %>%
-  filter(Group_finescale %in% top_species) %>%
-  group_by(Site, Date, wyjday, Year, Group_finescale, Region) %>%
+  # filter(Group_family %in% top_species) %>%
+  group_by(Site, Date, wyjday, Year, Group_family, Region) %>%
   summarise(sumtot = sum(Density, na.rm = TRUE), .groups="drop")
 
 zoopcast_spec <- dcast(
   zoopsp,
-  formula = Site + Date + wyjday + Year + Region ~ Group_finescale,
+  formula = Site + Date + wyjday + Year + Region ~ Group_family,
   value.var = "sumtot",
   fun.aggregate = sum,
   fill = 0
 )
 
 # NMDS prep
-com_spec <- decostand(zoopcast_spec[, -(1:5)], method = "log")
+com_spec <- decostand(zoopcast_spec[, -(1:5)], method = "hellinger")
 
-nmds_spec <- metaMDS(zoopcast_spec[, -(1:5)], autotransform = FALSE)
+# nmds_spec <- metaMDS(zoopcast_spec[, -(1:5)], autotransform = FALSE)
+nmds_spec <- metaMDS(com_spec[,], autotransform = FALSE)
 
 # Extract site & species scores
 nmds_spec_sites <- as.data.frame(scores(nmds_spec, display = "sites"))
@@ -341,13 +402,13 @@ nmds_spec_sites$wyjday <- zoopcast_spec$wyjday
 nmds_spec_sites$Region <- zoopcast_spec$Region
 
 nmds_spec_species <- as.data.frame(scores(nmds_spec, display = "species"))
-nmds_spec_species$Group_finescale <- rownames(nmds_spec_species)
+nmds_spec_species$Group_family <- rownames(nmds_spec_species)
 
 ggplot() + 
   geom_point(data = nmds_spec_sites, aes(x = NMDS1, y = NMDS2, color = Site)) +
   geom_point(data = nmds_spec_species, aes(x = NMDS1, y=NMDS2), size = .8) +
   # geom_path(data = nmds_spec_sites, aes(x = NMDS1, y = NMDS2, color = Site, group = Site)) +
-  geom_text_repel(data=nmds_spec_species,aes(x=NMDS1,y=NMDS2,label=Group_finescale), alpha=0.9, size = 3, force = .1) +
+  geom_text_repel(data=nmds_spec_species,aes(x=NMDS1,y=NMDS2,label=Group_family), alpha=0.9, size = 3, force = .1) +
   scale_color_viridis_d()+ scale_fill_viridis_d() + labs(title = "NMDS - 2016") +
   theme_bw(base_family = "serif") + #theme(legend.position = "none") +
   stat_ellipse(data = nmds_spec_sites[nmds_spec_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], 
@@ -359,7 +420,7 @@ ggplot() +
   geom_point(data = nmds_spec_sites[nmds_spec_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], aes(x = NMDS1, y = NMDS2, color = Site)) +
   geom_point(data = nmds_spec_species, aes(x = NMDS1, y=NMDS2), size = .8) +
   geom_path(data = nmds_spec_sites[nmds_spec_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], aes(x = NMDS1, y = NMDS2, color = Site, group = Site)) +
-  geom_text_repel(data=nmds_spec_species,aes(x=NMDS1,y=NMDS2,label=Group_finescale), alpha=0.9, size = 3, force = .1) +
+  geom_text_repel(data=nmds_spec_species,aes(x=NMDS1,y=NMDS2,label=Group_family), alpha=0.9, size = 3, force = .1) +
   scale_color_viridis_d()+ scale_fill_viridis_d() + labs(title = "NMDS - 2016") +
   theme_bw(base_family = "serif") + #theme(legend.position = "none") +
   stat_ellipse(data = nmds_spec_sites[nmds_spec_sites$Site %in% c("FWBN", "CCSYB", "RD22"),], 
@@ -371,7 +432,7 @@ ggplot() +
   geom_point(data = nmds_spec_sites, aes(x = NMDS1, y = NMDS2, color = wyjday)) +
   geom_point(data = nmds_spec_species, aes(x = NMDS1, y=NMDS2), size = .8) +
   geom_path(data = nmds_spec_sites, aes(x = NMDS1, y = NMDS2, color = wyjday, group = wyjday)) +
-  geom_text_repel(data=nmds_spec_species,aes(x=NMDS1,y=NMDS2,label=Group_finescale), alpha=0.9, size = 3, force = .1) +
+  geom_text_repel(data=nmds_spec_species,aes(x=NMDS1,y=NMDS2,label=Group_family), alpha=0.9, size = 3, force = .1) +
   scale_color_viridis_c()+ scale_fill_viridis_c() + labs(title = "NMDS - 2016") +
   theme_bw(base_family = "serif") + #theme(legend.position = "none") +
   stat_ellipse(data = nmds_spec_sites, 
@@ -556,7 +617,7 @@ vis3d(nmds_spec_sites)
 library(indicspecies)
 
 # zoopcast_group or zoopcast_spec can be used for ISA
-isa <- multipatt(zoopcast_spec[, -(1:5)], zoopcast_spec$Sitetype, control = how(nperm=999))
+isa <- multipatt(zoopcast_spec[, -(1:5)], zoopcast_spec$Site, control = how(nperm=999))
 summary(isa)
 
 # 13. DTW analysis --------------------------------------------------------
@@ -671,7 +732,7 @@ for(g in group_names){
   
   rownames(ts_sub) <- site_names
   
-  # ⭐ Z-score normalization per site (row)
+  # Z-score normalization per site (row)
   ts_norm <- t(scale(t(ts_sub), center = TRUE, scale = TRUE))
   
   # replace NaN or Inf (flat or zero-only sites)
@@ -766,6 +827,25 @@ nmds_log_scores$TotalDensity <- rowSums(com_density, na.rm = TRUE)
 nmds_log_scores$DensityScaled <- scales::rescale(nmds_log_scores$TotalDensity)
 
 # 5 — Plot
+plotly::ggplotly(ggplot(nmds_log_scores,
+       aes(x = NMDS1, y = NMDS2,
+           label = Site,
+           size = TotalDensity,        # magnitude signal
+           color = DensityScaled)) +    # magnitude signal
+  geom_point(alpha = 0.8) +
+  geom_text_repel(size = 4) +
+  scale_color_viridis_c(option = "magma") +
+  scale_size(range = c(3, 14)) +
+  theme_bw() +
+  labs(
+    title = "NMDS (Bray) using Log-Densities",
+    subtitle = "Points scaled by total zooplankton density (Option 6)",
+    x = "NMDS1",
+    y = "NMDS2",
+    size = "Total Density",
+    color = "Scaled Density"
+  ))
+
 ggplot(nmds_log_scores,
        aes(x = NMDS1, y = NMDS2,
            label = Site,
@@ -784,4 +864,3 @@ ggplot(nmds_log_scores,
     size = "Total Density",
     color = "Scaled Density"
   )
-

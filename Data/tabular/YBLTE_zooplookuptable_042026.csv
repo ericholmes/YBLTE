@@ -39,15 +39,15 @@ Sorter,Category,Taxa_identified,Common_name,Group_family,Group_finescale,Group_g
 2,Copepod,cyclopidae,NA,Cyclopidae,Cyclopidae,Copepoda,Cyclopoida,Cyclopoida,Copepoda,Copepoda,Copepoda,Arthropoda,NA,Maxillopoda,Copepoda,Cyclopoida,NA,Cyclopidae,Cyclopidae,NA,NA,NA,NA,NA,NA,NA,NA,NA
 2,Copepod,cyclopoid,NA,Cyclopidae,Cyclopidae,Copepoda,Cyclopoida,Cyclopoida,Copepoda,Copepoda,Copepoda,Arthropoda,NA,Maxillopoda,Copepoda,Cyclopoida,NA,Cyclopidae,Cyclopidae,NA,NA,NA,NA,NA,NA,NA,NA,NA
 2,Copepod,cyclopoida,NA,Cyclopidae,Cyclopidae,Copepoda,Cyclopoida,Cyclopoida,Copepoda,Copepoda,Copepoda,Arthropoda,NA,Maxillopoda,Copepoda,Cyclopoida,NA,Cyclopidae,Cyclopidae,NA,NA,NA,NA,NA,NA,NA,NA,NA
-2,Copepod,copepoda,NA,Copepoda_other,Copepoda,Copepoda,Copepoda,Copepoda,Copepoda,Copepoda,Copepoda,Arthropoda,NA,Maxillopoda,Copepoda,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+2,Copepod,copepoda,NA,Copepoda,Copepoda,Copepoda,Copepoda,Copepoda,Copepoda,Copepoda,Copepoda,Arthropoda,NA,Maxillopoda,Copepoda,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 2,Ostracod,cypridopsis,ostracod,Cyprididae,Cyprididae,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,Podacopida,NA,Cyprididae,Cypridopsis,NA,NA,NA,NA,NA,NA,NA,NA,NA
 2,Ostracod,eucypris,ostracod,Cyprididae,Cyprididae,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,Podacopida,NA,Cyprididae,Eucypris,NA,NA,NA,NA,NA,NA,NA,NA,NA
 2,Ostracod,illyocypris,ostracod,Cyprididae,Cyprididae,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,Podacopida,NA,Cyprididae,Illyocypris,NA,NA,NA,NA,NA,NA,NA,NA,NA
 2,Ostracod,ilyocypris,ostracod,Cyprididae,Cyprididae,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,Podacopida,NA,Cyprididae,Illyocypris,NA,NA,NA,NA,NA,NA,NA,NA,NA
 2,Ostracod,cyprididae,ostracod,Cyprididae,Cyprididae,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,Podacopida,NA,Cyprididae,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-2,Ostracod,podacopida,ostracod,Ostracoda_other,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,Podacopida,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-2,Ostracod,podacopa,ostracod,Ostracoda_other,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-2,Ostracod,ostracoda,ostracod,Ostracoda_other,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+2,Ostracod,podacopida,ostracod,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,Podacopida,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+2,Ostracod,podacopa,ostracod,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,Podacopa,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+2,Ostracod,ostracoda,ostracod,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Ostracoda,Arthropoda,NA,Ostracoda,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 2,Rotifer,rotifera,Wheel animals,Rotifera,Rotifera,Rare,Rotifera,Rotifera,Rotifera,Rotifera,Rotifera,Rotifera,NA,Rotifera,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 3,Macro Invertebrate,ceratopogonidae,Biting midge,Diptera,Ceratopogonidae,Insecta,Insecta,Diptera,Insecta,Aquatic insect,Insecta,Arthropoda,Hexapoda,Insecta,NA,Diptera,NA,Ceratopogonidae,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 3,Chironomidae,chironomidae,Midge,Diptera,Chironomidae,Insecta,Insecta,Diptera,Insecta,Aquatic insect,Insecta,Arthropoda,Hexapoda,Insecta,NA,Diptera,NA,Chironomidae,NA,NA,NA,NA,NA,(https://www.journals.uchicago.edu/doi/10.1899/12-168.1),NA,NA,NA,May need to differentiate lifestage here to estimate biomass
