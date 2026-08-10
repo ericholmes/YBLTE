@@ -23,20 +23,22 @@ sites <- c(tribs, channel, offchannel)
 startdate <- "2025-12-01"
 enddate <- "2026-04-01"
 
+satellitedates <- c("2026-01-08", "2026-02-12", "2026-03-04", "2026-03-09") %>% as.Date()
+
 cols <- scale_color_manual(values = c("RCS" = "#0D0887FF",
-                                         "FRE" = "#CC4678FF",
-                                         "CCY" = "#F89441FF",
-                                         "PTC" = "#B3BA18",
-                                         "FWBN" = "#CC4678FF", 
-                                         "KLWW" = "#0D0887FF",
-                                         "CCSYB" = "#F89441FF",
-                                         "RD22" = "#46337EFF", 
-                                         "AL0" = "#365C8DFF", 
-                                         "LIS" = "#277F8EFF",
-                                         "STTD" = "#1FA187FF",
-                                         "YBLR4" = "#4AC16DFF", 
-                                         "SB4" = "#9FDA3AFF", 
-                                         "TEW" = "#C4B31D"))
+                                       "FRE" = "#CC4678FF",
+                                       "CCY" = "#F89441FF",
+                                       "PTC" = "#B3BA18",
+                                       "FWBN" = "#CC4678FF", 
+                                       "KLWW" = "#0D0887FF",
+                                       "CCSYB" = "#F89441FF",
+                                       "RD22" = "#46337EFF", 
+                                       "AL0" = "#365C8DFF", 
+                                       "LIS" = "#277F8EFF",
+                                       "STTD" = "#1FA187FF",
+                                       "YBLR4" = "#4AC16DFF", 
+                                       "SB4" = "#9FDA3AFF", 
+                                       "TEW" = "#C4B31D"))
 fills <- scale_fill_manual(values = c("RCS" = "#0D0887FF",
                                       "FRE" = "#CC4678FF",
                                       "CCY" = "#F89441FF",
@@ -63,9 +65,9 @@ proj_pts <- proj_raw %>%
 
 # Filter data points and add clusters
 proj_pts <- proj_pts %>% filter(Site_id %in% sites)
-proj_pts$Cluster <- "channel"
-proj_pts[proj_pts$Site_id %in% offchannel, "Cluster"] <- "off-channel"
-proj_pts[proj_pts$Site_id %in% tribs, "Cluster"] <- "tributary"
+proj_pts$Cluster <- "Channel"
+proj_pts[proj_pts$Site_id %in% offchannel, "Cluster"] <- "Off-channel"
+proj_pts[proj_pts$Site_id %in% tribs, "Cluster"] <- "Tributary"
 
 # Subset bypasses to only Yolo
 yolo_bypass <- bypasses[bypasses$Feature_Name %in% 
@@ -75,6 +77,9 @@ yolo_bypass <- bypasses[bypasses$Feature_Name %in%
 WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 
 # Plot map
+# tiff("BDSC/YBLTE_Sites%02da.tif",
+#      height = 6, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")
+
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'a'), color = NA) +
   scale_fill_manual(values = c('a' = alpha('#33599C', 0.5)), 
@@ -95,8 +100,8 @@ ggplot() +
   geom_sf(data = roads_filtered, color = "grey60") +
   ggnewscale::new_scale_fill() + theme_bw() +
   
-  geom_sf(data = proj_pts %>% filter(Sampletype=="main"), 
-          aes(shape = Cluster, fill = Cluster), size = 4, linewidth = 2) +
+  geom_sf(data = proj_pts, 
+          aes(shape = Cluster, fill = Cluster), size = 5, linewidth = 2) +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
   
@@ -114,7 +119,7 @@ ggplot() +
                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "left") +
   geom_text_repel(data = proj_pts %>% filter(Sampletype=="main"), 
                   aes(geometry = geometry, label = Site_id), 
-                  stat = "sf_coordinates", size = 3, bg.color = alpha("white", 0.6),
+                  stat = "sf_coordinates", size = 4, bg.color = alpha("white", 0.6),
                   color = "black", bg.r = 0.1, fontface = "bold") +
   coord_sf(xlim = c(-121.9, -121.4), ylim = c(38.15, 38.85), expand = FALSE) +
   annotation_scale(location = "bl", width_hint = 0.2, line_width = 1) + 
@@ -122,8 +127,10 @@ ggplot() +
                          style = north_arrow_fancy_orienteering(),
                          height = unit(0.3,"in"), width = unit(0.3,"in"),
                          pad_x = unit(0.06, "in"), pad_y = unit(0.25, "in")) + 
-  labs(title = "Map of Yolo Bypass Lower Trophic Expansion Sites",
+  labs(title = "Yolo Bypass Lower Trophic Expansion Sites",
        x = NULL, y = NULL, shape = "Site Type", fill = "Site Type", label = "")
+
+# dev.off()
 
 # **TODO save plot and adjust size/text size
 
@@ -156,12 +163,13 @@ cdec_wide <- cdec_wide %>% drop_na(discharge_cfs)
 # Plot flow
 (tribflowplot1 <- ggplot(cdec_wide, 
                          aes(x = Datetime, y = discharge_cfs, color = Site_no)) + 
-    geom_line() + #animCol + animFill +
+    geom_line() + cols + fills +
     # Fill under line
     geom_ribbon(aes(ymin=0, ymax=discharge_cfs, fill=Site_no), 
                 alpha=0.1, outline.type="lower") +
     # Frame limits, allow FRE to break out of frame
     coord_cartesian(ylim=c(0, max((cdec_wide %>% filter(Site_no!="FRE"))$discharge_cfs)), clip = "off") +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
     theme_bw() + labs(title = "Tributary Flow", y = "Discharge (cfs)",
                       color = "Water Source", fill = "Water Source", x = NULL))
 
@@ -178,8 +186,9 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
 
 # Percent flow plot, stacked bar plot (daily increments)
 pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
-  geom_bar(stat = "identity", alpha = 0.9, width = 1) + #animFill +
-  labs(x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
+  geom_bar(stat = "identity", alpha = 0.7, width = 1) + fills +
+  geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+  labs(title = " ", x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
 
 ### pt wq heat maps
 # Load data
@@ -200,9 +209,9 @@ wqp$Date <-as.Date(wqp$Date)
 wqp <- wqp %>% filter(between(Date, as.Date(startdate), as.Date(enddate)))
 
 wqp <- wqp %>% filter(Site %in% sites)
-wqp$Cluster <- "channel"
-wqp[wqp$Site %in% offchannel, "Cluster"] <- "off-channel"
-wqp[wqp$Site %in% tribs, "Cluster"] <- "tributary"
+wqp$Cluster <- "Channel"
+wqp[wqp$Site %in% offchannel, "Cluster"] <- "Off-channel"
+wqp[wqp$Site %in% tribs, "Cluster"] <- "Tributary"
 
 wqp$Sitefac <- factor(wqp$Site, levels = c(sites))
 
@@ -211,72 +220,90 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
 # Plot heat maps
 # Temperature
 (tempplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Temp)) + 
-    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "Temp (C)") +
+    geom_tile(width = 7) + labs(title = "Point Water Quality", x = NULL, y=NULL, fill = "Temp (C)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    geom_hline(yintercept = 3.5) + geom_hline(yintercept = 7.5) +
-    geom_hline(yintercept = 8.5, linetype = 4) + geom_hline(yintercept = 9.5, linetype = 4) +
+    geom_hline(yintercept = c(3.5, 7.5)) +
+    geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Dissolved oxygen
 (doplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = DO_mgl)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mgl)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mg/l)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    geom_hline(yintercept = 3.5) + geom_hline(yintercept = 7.5) +
-    geom_hline(yintercept = 8.5, linetype = 4) + geom_hline(yintercept = 9.5, linetype = 4))
+    geom_hline(yintercept = c(3.5, 7.5)) +
+    geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Specific conductivity
 (spcplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = SPC_uscm)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (uscm)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (us/cm)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    geom_hline(yintercept = 3.5) + geom_hline(yintercept = 7.5) +
-    geom_hline(yintercept = 8.5, linetype = 4) + geom_hline(yintercept = 9.5, linetype = 4))
+    geom_hline(yintercept = c(3.5, 7.5)) +
+    geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Turbidity
 (turbplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Turb_fnu)) + 
     geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Turb (FNU)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    geom_hline(yintercept = 3.5) + geom_hline(yintercept = 7.5) +
-    geom_hline(yintercept = 8.5, linetype = 4) + geom_hline(yintercept = 9.5, linetype = 4))
+    geom_hline(yintercept = c(3.5, 7.5)) +
+    geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Fluorescent dissolved organic matter (FDOM)
 (fdomplotdate <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = Date, y = Sitefac, fill = fdom_qsu)) + 
-    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "FDOM (qsu)") +
+    geom_tile(width = 7) + labs(title = " ", x = NULL, y=NULL, fill = "FDOM (QSU)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    geom_hline(yintercept = 3.5) + geom_hline(yintercept = 7.5) +
-    geom_hline(yintercept = 8.5, linetype = 4) + geom_hline(yintercept = 9.5, linetype = 4))
+    geom_hline(yintercept = c(3.5, 7.5)) +
+    geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Chlorophyll-a
 (chlplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = CHL_ugl)) + 
-    geom_tile(width = 8) + labs(x = NULL, y= NULL, fill = "Chl (ugl)") +
+    geom_tile(width = 8) + labs(x = NULL, y= NULL, fill = "Chl (ug/l)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    geom_hline(yintercept = 3.5) + geom_hline(yintercept = 7.5) +
-    geom_hline(yintercept = 8.5, linetype = 4) + geom_hline(yintercept = 9.5, linetype = 4))
+    geom_hline(yintercept = c(3.5, 7.5)) +
+    geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Zooplankton score (1-5)
 (zoopplotdate <- ggplot(wqp %>% drop_na(c(Sitefac, Zoop_score)), aes(x = Date, y = Sitefac, fill = Zoop_score)) + 
     geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Zoop score") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    geom_hline(yintercept = 3.5) + geom_hline(yintercept = 7.5) +
-    geom_hline(yintercept = 8.5, linetype = 4) + geom_hline(yintercept = 9.5, linetype = 4))
+    geom_hline(yintercept = c(3.5, 7.5)) +
+    geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 ### combined wq
-cowplot::plot_grid(cowplot::plot_grid(tribflowplot1 + theme(axis.text.x = element_blank()),
-                                      pflowplot + guides(fill = "none"),
+png("BDSC/YBLTE_Point_wq_%02d.png",
+    height = 10, width = 10, units = "in", res = 1000, family = "serif")
+
+cowplot::plot_grid(cowplot::plot_grid(tribflowplot1 + guides(fill = "none"),
+                                      pflowplot,
                                       tempplotdate + labs(title = "Point Water Quality") + theme(axis.text.x = element_blank()),
+                                      fdomplotdate + theme(axis.text.x = element_blank()),
                                       doplotdate,
+                                      chlplotdate,
                                       spcplotdate + theme(axis.text.x = element_blank()),
-                                      turbplotdate + theme(axis.text.x = element_blank()),
-                                      fdomplotdate,
-                                      chlplotdate + theme(axis.text.x = element_blank()),
-                                      zoopplotdate,
-                                      align  = "v", ncol = 1))
+                                      zoopplotdate + theme(axis.text.x = element_blank()),
+                                      turbplotdate,
+                                      align  = "v", ncol = 2))
+
+dev.off()
 
 ### pca
 # Filter var of interest; temp too variable (discrete data),
@@ -474,9 +501,25 @@ for(i in 1:n){
   }
 }
 
+an_row <- data.frame(cluster = factor(c(rep("Tributary", times=3), rep("Channel", times=4), rep("Off-channel", times=3))))
+rownames(an_row) <- rownames(dtw_multi)
+
+ann_colors = list(
+  cluster = c(Tributary = "purple", Channel = "steelblue", `Off-channel` = "gold")
+)
+
+png("BDSC/YBLTE_Point_wq_DTW_clust_mv%02d.png",
+    height = 6, width = 7, units = "in", res = 1000, family = "serif")
+
 pheatmap(
   dtw_multi,
   clustering_distance_rows = "euclidean",
   clustering_distance_cols = "euclidean",
+  annotation_row = an_row,
+  annotation_colors = ann_colors,
+  annotation_legend = F,
+  annotation_names_row = F,
   main = "Multivariate DTW Distance (PC1 + PC2)"
 )
+
+dev.off()
