@@ -80,7 +80,7 @@ zoop26 <- zoop26 %>%
   mutate(
     Species   = tolower(trimws(Species)),
     LifeStage = tolower(trimws(LifeStage)),
-    splife    = trimws(str_c(Species, LifeStage, sep = "_")),
+    splife = gsub("_NA$|_$", "", paste0(Species, "_", LifeStage)),
     Date      = as.Date(Date)
   )
 
@@ -127,6 +127,7 @@ calc_cpue_density <- function(df) {
 
 calc_cpue_density_pooled <- function(df) {
   
+  # Step 1: Create numeric abundance and aliquot-level subsample fraction
   df2 <- df %>%
     mutate(
       abundance_num = case_when(
@@ -136,19 +137,23 @@ calc_cpue_density_pooled <- function(df) {
       subsample_fraction = Volumesubsampled_ml / TotalVolume_ml
     )
   
-  aliquot_info <- df2 %>%
+  # Step 2: Compute denominators per Site + Date
+  # denom_all = sum of aliquot subsample fractions
+  # denom_nc  = subsample fraction of first aliquot for NC taxa
+  denoms <- df2 %>%
+    group_by(Site, Date, SplitFraction) %>%
+    summarise(aliquot_fraction = first(subsample_fraction),
+      .groups = "drop") %>%
     group_by(Site, Date) %>%
-    summarise(
-      n_aliquots = n_distinct(SplitFraction),
-      subsample_fraction_single = first(subsample_fraction),
-      denom_all = n_aliquots * subsample_fraction_single,   # pooled denominator for non-NC
-      denom_nc  = subsample_fraction_single,                 # denominator for NC cases
-      .groups = "drop"
-    )
+    summarise(denom_all = sum(aliquot_fraction, na.rm = TRUE),
+      denom_nc  = first(aliquot_fraction),
+      .groups = "drop")
   
+  # Step 3: Attach denominators to all rows
   df2 <- df2 %>%
-    left_join(aliquot_info, by = c("Site", "Date"))
+    left_join(denoms, by = c("Site","Date"))
   
+  # Step 4: Summarise by splife-group while using correct denominator logic
   df2 %>%
     group_by(Site, Date, splife) %>%
     summarise(
@@ -157,22 +162,32 @@ calc_cpue_density_pooled <- function(df) {
       Species   = first(Species),
       Region    = first(Region),
       Sitetype  = first(Sitetype),
+      
       numerator = sum(abundance_num, na.rm = TRUE),
-      denominator = if (any(is.na(abundance_num)))
-        first(denom_nc)
-      else
+      
+      denominator = if (any(is.na(abundance_num))) 
+        first(denom_nc) 
+      else 
         first(denom_all),
+      
       TotalCount = numerator / denominator,
       .groups = "drop"
     ) %>%
-    mutate(Distance = ifelse(is.na(Rotations), 20,
+    mutate(
+      Distance = ifelse(is.na(Rotations), 20,
                         (Rotations * 26873) / 999999),
+      
       Volume_Sampled = pi * (((Ringsize / 2) * 0.01)^2) * Distance,
-      Density = TotalCount / Volume_Sampled)
+      
+      Density = TotalCount / Volume_Sampled
+    )
 }
 
 zooplongmean <- calc_cpue_density(zoop26)
 zooplong <- calc_cpue_density_pooled(zoop26)
+
+(zoopexamp <- zooplong[zooplong$Site == "TEW" & zooplong$Date == as.Date("2025-12-16"),])
+
 
 # dput(zoop26[zoop26$Site == "STTD" & zoop26$Date == as.Date("2025-11-13"),])
 view(zooplong[zooplong$Site == "STTD" & zooplong$Date == as.Date("2025-11-13"),])
@@ -794,7 +809,6 @@ ggplot(dtw_scores, aes(x = NMDS1, y = NMDS2, color = Site, label = Site)) +
     color = "Site"
   )
 
-
 library(vegan)
 library(tidyverse)
 library(ggrepel)
@@ -827,24 +841,7 @@ nmds_log_scores$TotalDensity <- rowSums(com_density, na.rm = TRUE)
 nmds_log_scores$DensityScaled <- scales::rescale(nmds_log_scores$TotalDensity)
 
 # 5 — Plot
-plotly::ggplotly(ggplot(nmds_log_scores,
-       aes(x = NMDS1, y = NMDS2,
-           label = Site,
-           size = TotalDensity,        # magnitude signal
-           color = DensityScaled)) +    # magnitude signal
-  geom_point(alpha = 0.8) +
-  geom_text_repel(size = 4) +
-  scale_color_viridis_c(option = "magma") +
-  scale_size(range = c(3, 14)) +
-  theme_bw() +
-  labs(
-    title = "NMDS (Bray) using Log-Densities",
-    subtitle = "Points scaled by total zooplankton density (Option 6)",
-    x = "NMDS1",
-    y = "NMDS2",
-    size = "Total Density",
-    color = "Scaled Density"
-  ))
+
 
 ggplot(nmds_log_scores,
        aes(x = NMDS1, y = NMDS2,
