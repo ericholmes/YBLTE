@@ -67,13 +67,14 @@ zoop26sites  <- read_excel("Data/tabular/YBLTE_sites.xlsx", sheet = 1)
 zooplookup   <- read.csv("Data/tabular/YBLTE_zooplookuptable_042026.csv")
 
 # 2. Metadata attachment ----
-
+unique(zoop26$Site)
 zoop26 <- zoop26 %>%
   left_join(
     zoop26sites %>% select(Site_id, Region, Sitetype),
     by = c("Site" = "Site_id")
   ) |> filter(!(Site %in% c("KLWW", "LP", "WDSYB")))
 
+zoop26 <- zoop26[!(zoop26$Site == "CNW" & zoop26$Date == as.Date("2026-01-20")),]
 # 3. Clean fields: species, lifestage, splife, date ----
 
 zoop26 <- zoop26 %>%
@@ -102,6 +103,8 @@ zoop26 <- zoop26 %>%
     Distance  = ifelse(is.na(Rotations), 20,
                        (Rotations * 26873) / 999999)
   )
+
+zoop26$Distance <- ifelse(zoop26$Distance < 7, 20, zoop26$Distance)
 
 ggplot(zoop26, aes(x = Rotations)) + geom_histogram()
 ggplot(zoop26, aes(x = Distance)) + geom_histogram()
@@ -212,6 +215,9 @@ zoopgroupsum <- zooplong %>%
 ggplot(zoopgroupsum, aes(x = reorder(group, -total_density), y = total_density)) + 
   geom_bar(stat = "identity")
 
+zooptaxa <- unique(zooplong$Species)
+zooptaxa[!(zooptaxa %in% zooplookup$Taxa_identified)]
+
 # 8. Water-year day calculation ----
 
 zooplong <- zooplong %>%
@@ -281,7 +287,8 @@ pastel_bold_pal <- c(
   "Small cladocera"  = "#8BCC8C",  # light green
   "Rotifera"         = "#B38FD3",  # medium pastel-purple
   "Ostracoda"        = "#E5C58B",  # sand / buff
-  "Insecta"          = "#F4A261"  # warm pastel orange
+  "Insecta"          = "#F4A261",  # warm pastel orange
+  "Rare"             = "grey80"
 )
 
 weekly_bar_by_site <- ggplot(zoop_weekly_group[!(zoop_weekly_group$group %in% c("Rare", "Copepoda")),],
@@ -306,6 +313,65 @@ weekly_bar_by_site <- ggplot(zoop_weekly_group[!(zoop_weekly_group$group %in% c(
 png("Output/Figures/Zoop_weekly%02d.png", height = 9, width = 6.5, units = "in", res = 1000, family = "serif")
 weekly_bar_by_site
 weekly_bar_by_site + scale_y_sqrt()
+dev.off()
+
+zoop_weekly_pct <-zoop_weekly_group %>%
+  group_by(Site, week_start) %>%
+  mutate(total_site = sum(totezoop, na.rm = TRUE),
+         pct = totezoop / total_site) %>%
+  ungroup()
+
+unique(zoop_weekly_pct$group)
+# save(zoop_weekly_group, zoop_weekly_pct, file = "Data/YBLTE_Zoop_barplot_data.Rdata")
+
+weekly_bar_by_site_wrap <- ggplot(zoop_weekly_group[,],
+                             aes(x = week_start, y = totezoop, fill = group)) +
+  geom_bar(stat = "identity", width = 7) +
+  
+  theme_bw() +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b-%1") +
+  scale_y_continuous(labels = label_number(scale_cut = cut_short_scale())) +
+  scale_fill_manual(values = pastel_bold_pal) +
+  labs(
+    x = NULL,
+    y = "Zooplankton Density (m^-3)",
+    fill = "Group",
+  ) +
+  theme(axis.text.x  = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom")
+weekly_bar_by_site_wrap + facet_wrap(Sitefac ~ ., scales = "free_y")
+weekly_bar_by_site_wrap + facet_wrap(Sitefac ~ ., scales = "fixed")
+
+# PERCENT-OF-TOTAL PLOT
+(pct_by_site <- ggplot(zoop_weekly_pct,
+                       aes(x = week_start, y = pct, fill = group)) +
+    geom_bar(stat = "identity", width = 4) +
+    facet_wrap(~ Sitefac, ncol = 7) +
+    scale_fill_manual(values = pastel_bold_pal) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%b-%1") +
+    theme_bw() +
+    labs(x = NULL,  y = "Percent of Total Community",
+         fill = "Group"
+    ) +
+    theme(
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    ))
+
+legend <- cowplot::get_legend(
+  weekly_bar_by_site_wrap +
+    theme(legend.position = "bottom")   # ensure legend is on
+)
+
+png("Output/Figures/Zoop_weekly%02d.png", height = 9, width = 6.5, units = "in", res = 1000, family = "serif")
+
+cowplot::plot_grid(weekly_bar_by_site_wrap + facet_wrap(~Sitefac, scales = "free_y") + theme(legend.position = "none"),
+                   pct_by_site + theme(legend.position = "none"),
+                   legend,
+                   ncol = 1, rel_heights = c(9,9,1),
+                   labels = c("A", "B"), 
+                   align = "v")
 dev.off()
 
 # 9. NMDS 1: GROUPED TAXA (Category)----
@@ -405,7 +471,7 @@ zoopcast_spec <- dcast(
 )
 
 # NMDS prep
-com_spec <- decostand(zoopcast_spec[, -(1:5)], method = "hellinger")
+com_spec <- decostand(zoopcast_spec[, -(1:5)], method = "range")
 
 # nmds_spec <- metaMDS(zoopcast_spec[, -(1:5)], autotransform = FALSE)
 nmds_spec <- metaMDS(com_spec[,], autotransform = FALSE)
@@ -678,7 +744,7 @@ plot(hc_dtw,
      xlab="Site",
      sub="")
 
-clusters <- cutree(hc_dtw, k = 3)   # choose desired number
+clusters <- cutree(hc_dtw, k = 5)   # choose desired number
 print(clusters)
 
 
@@ -691,12 +757,12 @@ pheatmap(dtw_dist,
 
 zoop_weekly_ts$cluster <- clusters[zoop_weekly_ts$Site]
 
-ggplot(zoop_weekly_ts, aes(x = week_start, y = total_density, color = Site)) +
+plotly::ggplotly(ggplot(zoop_weekly_ts, aes(x = week_start, y = total_density, color = Site)) +
   geom_line() +
-  facet_wrap(~cluster, scales="free_y") +
+  facet_wrap(~cluster) +
   theme_bw() +
   labs(title = "Temporal Zooplankton Density Patterns by DTW Cluster",
-       y = "Density (m^-3)")
+       y = "Density (m^-3)"))
 
 library(dtwclust)
 
@@ -833,6 +899,7 @@ nmds_log <- metaMDS(
 nmds_log_scores <- as.data.frame(scores(nmds_log, "sites"))
 nmds_log_scores$Site <- zoopcast_group$Site
 nmds_log_scores$Region <- zoopcast_group$Region
+nmds_log_scores$Date <- zoopcast_group$Date
 
 # compute total density (raw density)
 nmds_log_scores$TotalDensity <- rowSums(com_density, na.rm = TRUE)
