@@ -109,7 +109,7 @@ enddate <- enddate <- as.POSIXct("2026-05-31")
 
 Overview {data-orientation=rows}
 =====================================
-Row {data-height='40%'}
+Row {data-height='35%'}
 -------------------------------------
 ###
 Hello!
@@ -122,7 +122,7 @@ Dominating water sources: Sacramento River, Colusa Basin (Ridgecut), Cache Creek
 
 Explore our dashboard to see what we found!
 
-Row {data-height='60%'}
+Row {data-height='65%'}
 -------------------------------------
 ### science in action!
 ```{r}
@@ -237,50 +237,6 @@ Col {data-width='75%'}
 knitr::include_graphics("../Output/Figures/YBLTE_Point_wq_02.png")
 ```
 
-Logger Data (dygraph)
-=====================================
-### kill it... :,(     </3     NOOOOOOOOOO !!! But we must :/
-
-Continuous Water Quality Data (may need to refresh and change zoom for view)
-
-### 
-```{r}
-dy_plts <- list()
-i = 1
-
-for(s in unique(dobodat_full$station)){
-  dyD <- dygraph(dobodat_full %>% filter(station == s) 
-        %>% subset(select = c(datetime, temp_c, do_mgl)),
-    main = paste("MiniDOT at", s), group = s, height = 200, width = 200) %>%     
-    dyAxis("y", label = "Temperature (C)") %>% 
-    dyAxis("y2", label = "Dissolved Oxygen (mg/L)", independentTicks = T) %>% 
-    dySeries("temp_c", label = "Temp.") %>% 
-    dySeries("do_mgl", label = "DO", axis = "y2") %>% 
-    dyRangeSelector(dateWindow = c(startdate, enddate))
-
-  dyC <- dygraph(conddat_full %>% filter(station == s) %>% subset(select = c(datetime, spc)), 
-                main = paste("EC at", s), group = s, height = 200, width = 200) %>% 
-    dyAxis("y", label = "Sp. Conductivity (uS/cm)") %>% 
-    dySeries("spc", label = "SPC") %>% 
-    dyRangeSelector(dateWindow = c(startdate, enddate))
-  # Set plots in same row and adjust size
-  dy <- htmltools::browsable(htmltools::tags$div(style = "display: flex; flex-direction: row; gap: 20px;", dyD, dyC))
-  dy_plts[[i]] <- dy
-  i <- i+1
-}
-
-htmltools::tagList(dy_plts[1])
-htmltools::tagList(dy_plts[2])
-htmltools::tagList(dy_plts[3])
-htmltools::tagList(dy_plts[4])
-```
-
-### 
-```{r}
-htmltools::tagList(dy_plts[5])
-htmltools::tagList(dy_plts[6])
-htmltools::tagList(dy_plts[7])
-```
 Logger Data
 =====================================
 Col {data-width='25%'}
@@ -397,7 +353,7 @@ make_all_station_plots()
 
 PCA animation {data-orientation=rows}
 =====================================
-Col {data-height='25%'}
+Col {data-height='20%'}
 -------------------------------------
 ### 
 PCA (principal component analysis) simplifies multiple variables into components. Here, we took 6 water quality parameters into two components (there are more these explain most of the variance and are easy to visualize).
@@ -406,7 +362,7 @@ To interpret, each parameter has a vector showing its axis. For example, points 
 
 We have general areas of the main tributaries mapped out to see how points move between them across time. STTD in particular is highlighted as it's a downstream site and very influenced by how each tributary is flowing.On the right are plots showing tributary flow to compare with how sites respond accordingly.
 
-Col {data-height='75%'}
+Col {data-height='80%'}
 -------------------------------------
 ### 
 ```{r}
@@ -634,102 +590,103 @@ Zooplankton barplots
 =====================================
 
 ```{r, fig.width=14, fig.height=6}
-load(file = "../Data/YBLTE_Zoop_barplot_data.Rdata")
-
-pastel_bold_pal <- c(
-  "Calanoida"        = "#4F82C8",  # bold pastel blue
-  "Cyclopoida"       = "#7FB3F0",  # lighter blue
-  "Small cladocera"  = "#7ECF82",  # light green
-  "Large cladocera"  = "#4FAF50",  # deeper green (same hue family)
-  "Small cladocera"  = "#8BCC8C",  # light green
-  "Rotifera"         = "#B38FD3",  # medium pastel-purple
-  "Ostracoda"        = "#E5C58B",  # sand / buff
-  "Insecta"          = "#F4A261",  # warm pastel orange
-  "Rare"             = "grey80"
-)
-
-# -----------------------------
-# Weekly abundance barplot
-# -----------------------------
-weekly_bar_by_site_wrap <- ggplot(
-  zoop_weekly_group,
-  aes(x = week_start, y = totezoop, fill = group)
-) +
-  geom_bar(stat = "identity", width = 7) +
-  facet_wrap(~ Sitefac, nrow = 3, scales = "free_y") +
-  theme_bw() +
-  scale_x_date(date_breaks = "1 month", date_labels = "%b-%1") +
-  scale_y_continuous(labels = label_number(scale_cut = cut_short_scale())) +
-  scale_fill_manual(values = pastel_bold_pal) +
-  labs(
-    x = NULL,
-    y = "Zooplankton Density (m^-3)",
-    fill = "Group"
-  ) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom"
-  )
-
-
-# -----------------------------
-# Percent-of-total barplot
-# -----------------------------
-pct_by_site <- ggplot(
-  zoop_weekly_pct,
-  aes(x = week_start, y = pct, fill = group)
-) +
-  geom_bar(stat = "identity", width = 7) +
-  facet_wrap(~ Sitefac, nrow = 3) +
-  scale_fill_manual(values = pastel_bold_pal) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  scale_x_date(date_breaks = "1 month", date_labels = "%b-%1") +
-  theme_bw() +
-  labs(
-    x = NULL,
-    y = "Percent of Total Community",
-    fill = "Group"
-  ) +
-  theme(
-    legend.position = "bottom",
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-
-
-# -----------------------------
-# Shared legend extraction
-# -----------------------------
-legend <- cowplot::get_legend(
-  weekly_bar_by_site_wrap +
-    theme(legend.position = "bottom")
-)
-
-
-# Remove legends from each plot
-p1 <- weekly_bar_by_site_wrap + theme(legend.position = "none")
-p2 <- pct_by_site + theme(legend.position = "none")
-
-
-# -----------------------------
-# Horizontal layout using cowplot
-# -----------------------------
-final_plot <- cowplot::plot_grid(
-  p1, p2,
-  labels = c("A", "B"),
-  nrow = 1,                    # <-- HORIZONTAL orientation
-  rel_widths = c(1, 1.05),     # adjust if one needs more width
-  align = "h"
-)
-
-# Combine with shared legend
-final_plot_with_legend <- cowplot::plot_grid(
-  final_plot,
-  legend,
-  ncol = 1,
-  rel_heights = c(1, 0.12)
-)
-
-final_plot_with_legend
+knitr::include_graphics("../Output/Figures/Zoop_weekly01.png")
+# load(file = "../Data/YBLTE_Zoop_barplot_data.Rdata")
+# 
+# pastel_bold_pal <- c(
+#   "Calanoida"        = "#4F82C8",  # bold pastel blue
+#   "Cyclopoida"       = "#7FB3F0",  # lighter blue
+#   "Small cladocera"  = "#7ECF82",  # light green
+#   "Large cladocera"  = "#4FAF50",  # deeper green (same hue family)
+#   "Small cladocera"  = "#8BCC8C",  # light green
+#   "Rotifera"         = "#B38FD3",  # medium pastel-purple
+#   "Ostracoda"        = "#E5C58B",  # sand / buff
+#   "Insecta"          = "#F4A261",  # warm pastel orange
+#   "Rare"             = "grey80"
+# )
+# 
+# # -----------------------------
+# # Weekly abundance barplot
+# # -----------------------------
+# weekly_bar_by_site_wrap <- ggplot(
+#   zoop_weekly_group,
+#   aes(x = week_start, y = totezoop, fill = group)
+# ) +
+#   geom_bar(stat = "identity", width = 7) +
+#   facet_wrap(~ Sitefac, nrow = 3, scales = "free_y") +
+#   theme_bw() +
+#   scale_x_date(date_breaks = "1 month", date_labels = "%b-%1") +
+#   scale_y_continuous(labels = label_number(scale_cut = cut_short_scale())) +
+#   scale_fill_manual(values = pastel_bold_pal) +
+#   labs(
+#     x = NULL,
+#     y = "Zooplankton Density (m^-3)",
+#     fill = "Group"
+#   ) +
+#   theme(
+#     axis.text.x = element_text(angle = 45, hjust = 1),
+#     legend.position = "bottom"
+#   )
+# 
+# 
+# # -----------------------------
+# # Percent-of-total barplot
+# # -----------------------------
+# pct_by_site <- ggplot(
+#   zoop_weekly_pct,
+#   aes(x = week_start, y = pct, fill = group)
+# ) +
+#   geom_bar(stat = "identity", width = 7) +
+#   facet_wrap(~ Sitefac, nrow = 3) +
+#   scale_fill_manual(values = pastel_bold_pal) +
+#   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+#   scale_x_date(date_breaks = "1 month", date_labels = "%b-%1") +
+#   theme_bw() +
+#   labs(
+#     x = NULL,
+#     y = "Percent of Total Community",
+#     fill = "Group"
+#   ) +
+#   theme(
+#     legend.position = "bottom",
+#     axis.text.x = element_text(angle = 45, hjust = 1)
+#   )
+# 
+# 
+# # -----------------------------
+# # Shared legend extraction
+# # -----------------------------
+# legend <- cowplot::get_legend(
+#   weekly_bar_by_site_wrap +
+#     theme(legend.position = "bottom")
+# )
+# 
+# 
+# # Remove legends from each plot
+# p1 <- weekly_bar_by_site_wrap + theme(legend.position = "none")
+# p2 <- pct_by_site + theme(legend.position = "none")
+# 
+# 
+# # -----------------------------
+# # Horizontal layout using cowplot
+# # -----------------------------
+# final_plot <- cowplot::plot_grid(
+#   p1, p2,
+#   labels = c("A", "B"),
+#   nrow = 1,                    # <-- HORIZONTAL orientation
+#   rel_widths = c(1, 1.05),     # adjust if one needs more width
+#   align = "h"
+# )
+# 
+# # Combine with shared legend
+# final_plot_with_legend <- cowplot::plot_grid(
+#   final_plot,
+#   legend,
+#   ncol = 1,
+#   rel_heights = c(1, 0.12)
+# )
+# 
+# final_plot_with_legend
 
 
 ```

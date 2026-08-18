@@ -193,8 +193,8 @@ zooplong <- calc_cpue_density_pooled(zoop26)
 
 
 # dput(zoop26[zoop26$Site == "STTD" & zoop26$Date == as.Date("2025-11-13"),])
-view(zooplong[zooplong$Site == "STTD" & zooplong$Date == as.Date("2025-11-13"),])
-view(zooplongmean[zooplongmean$Site == "STTD" & zooplong$Date == as.Date("2025-11-13"),])
+# view(zooplong[zooplong$Site == "STTD" & zooplong$Date == as.Date("2025-11-13"),])
+# view(zooplongmean[zooplongmean$Site == "STTD" & zooplong$Date == as.Date("2025-11-13"),])
 
 # 7. Group taxa using lookup ----
 
@@ -259,7 +259,12 @@ zoop_weekly_group <- zooplong %>%
   mutate(week_start = floor_date(Date, "week")) %>%
   group_by(Site, week_start, group) %>%
   summarise(totezoop = sum(Density, na.rm = TRUE), .groups="drop")
-dput(unique(zoop_weekly_group[,"group"]))
+# dput(unique(zoop_weekly_group[,"group"]))
+
+# # By date instead of week
+# zoop_weekly_group <- zooplong %>%
+#   group_by(Site, Date, group) %>%
+#   summarise(totezoop = sum(Density, na.rm = TRUE), .groups="drop")
 
 zoop_weekly_group$group <- factor(
   zoop_weekly_group$group,
@@ -278,6 +283,9 @@ zoop_weekly_group$group <- factor(
 zoop_weekly_group$Sitefac <- factor(zoop_weekly_group$Site, 
                                     levels = c("FWBN", "FW1", "KNG3", "CNW", "CCSYB", "RD22", "YBLR4", "SB4", 
                                                "AL0", "LIS", "TER", "TEW", "STTD"))
+
+# Save data to plot in other scripts
+# save(zoop_weekly_group, file = "Data/YBLTE_zoop_clean.RData")
 
 pastel_bold_pal <- c(
   "Calanoida"        = "#4F82C8",  # bold pastel blue
@@ -321,7 +329,7 @@ zoop_weekly_pct <-zoop_weekly_group %>%
          pct = totezoop / total_site) %>%
   ungroup()
 
-unique(zoop_weekly_pct$group)
+# unique(zoop_weekly_pct$group)
 # save(zoop_weekly_group, zoop_weekly_pct, file = "Data/YBLTE_Zoop_barplot_data.Rdata")
 
 weekly_bar_by_site_wrap <- ggplot(zoop_weekly_group[,],
@@ -339,14 +347,14 @@ weekly_bar_by_site_wrap <- ggplot(zoop_weekly_group[,],
   ) +
   theme(axis.text.x  = element_text(angle = 45, hjust = 1),
     legend.position = "bottom")
-weekly_bar_by_site_wrap + facet_wrap(Sitefac ~ ., scales = "free_y")
-weekly_bar_by_site_wrap + facet_wrap(Sitefac ~ ., scales = "fixed")
+weekly_bar_by_site_wrap <- weekly_bar_by_site_wrap + facet_wrap(Sitefac ~ ., scales = "free_y", nrow = 3)
+# weekly_bar_by_site_wrap + facet_wrap(Sitefac ~ ., scales = "fixed")
 
 # PERCENT-OF-TOTAL PLOT
 (pct_by_site <- ggplot(zoop_weekly_pct,
                        aes(x = week_start, y = pct, fill = group)) +
-    geom_bar(stat = "identity", width = 4) +
-    facet_wrap(~ Sitefac, ncol = 7) +
+    geom_bar(stat = "identity", width = 7) +
+    facet_wrap(~ Sitefac, nrow =3) +
     scale_fill_manual(values = pastel_bold_pal) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
     scale_x_date(date_breaks = "1 month", date_labels = "%b-%1") +
@@ -364,15 +372,50 @@ legend <- cowplot::get_legend(
     theme(legend.position = "bottom")   # ensure legend is on
 )
 
-png("Output/Figures/Zoop_weekly%02d.png", height = 9, width = 6.5, units = "in", res = 1000, family = "serif")
+# Shared legend extraction
+legend <- cowplot::get_legend(
+  weekly_bar_by_site_wrap +
+    theme(legend.position = "bottom")
+)
 
-cowplot::plot_grid(weekly_bar_by_site_wrap + facet_wrap(~Sitefac, scales = "free_y") + theme(legend.position = "none"),
-                   pct_by_site + theme(legend.position = "none"),
-                   legend,
-                   ncol = 1, rel_heights = c(9,9,1),
-                   labels = c("A", "B"), 
-                   align = "v")
+
+# Remove legends from each plot
+p1 <- weekly_bar_by_site_wrap + theme(legend.position = "none")
+p2 <- pct_by_site + theme(legend.position = "none")
+
+# Horizontal layout using cowplot
+final_plot <- cowplot::plot_grid(
+  p1, p2,
+  labels = c("A", "B"),
+  nrow = 1,                    # <-- HORIZONTAL orientation
+  rel_widths = c(1, 1.05),     # adjust if one needs more width
+  align = "h"
+)
+
+# Combine with shared legend
+final_plot_with_legend <- cowplot::plot_grid(
+  final_plot,
+  legend,
+  ncol = 1,
+  rel_heights = c(1, 0.12)
+)
+
+png("Output/Figures/Zoop_weekly%02d.png", height = 6, width = 14, units = "in", res = 1000, family = "serif")
+
+final_plot_with_legend
+
 dev.off()
+
+# Vertical
+# png("Output/Figures/Zoop_weekly%02d.png", height = 9, width = 6.5, units = "in", res = 1000, family = "serif")
+# 
+# cowplot::plot_grid(weekly_bar_by_site_wrap + facet_wrap(~Sitefac, scales = "free_y") + theme(legend.position = "none"),
+#                    pct_by_site + theme(legend.position = "none"),
+#                    legend,
+#                    ncol = 1, rel_heights = c(9,9,1),
+#                    labels = c("A", "B"), 
+#                    align = "v")
+# dev.off()
 
 # 9. NMDS 1: GROUPED TAXA (Category)----
 

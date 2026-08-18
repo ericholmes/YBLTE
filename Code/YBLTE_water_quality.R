@@ -199,7 +199,9 @@ cdec_wide <- rbind(cdec_wide, yff_cdec)
 (spcplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = SPC_uscm)) + 
     geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (uscm)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
-    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
+    scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+    scale_fill_gradientn(colors = viridis::plasma(3), limits = c(100, 1000),
+                           breaks = c(seq(100,1000,250)), na.value = "#FDE725FF"))
 (spcbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = SPC_uscm)) + 
     geom_boxplot() + labs(x = NULL, y = "SPC (uscm)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
@@ -238,7 +240,7 @@ cdec_wide <- rbind(cdec_wide, yff_cdec)
 (fdomplotdate <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = Date, y = Sitefac, fill = fdom_qsu)) + 
     geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "FDOM (qsu)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
-    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
+    scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = (as.Date(c("2025-11-01", "2026-05-01")))))
 (fdombox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = fdom_qsu)) + 
     geom_boxplot() + labs(x = NULL, y = "FDOM (qsu)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
@@ -256,9 +258,20 @@ cdec_wide <- rbind(cdec_wide, yff_cdec)
     geom_boxplot() + labs(x = NULL, y = "Zoop score") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
+# Large cladocera (from zoop script)
+load("Data/YBLTE_zoop_clean.RData")
+
+(lcladplot <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Sitefac, fill = totezoop, color = "")) +
+    geom_tile(width = 7) + scale_fill_gradientn(trans = "log10", colors = viridis::plasma(3), limits = c(1000, NA),
+                                                breaks = c(1e3, 1e4, 1e5), labels = c("1k", "10k", "100k")) + 
+    labs(x = NULL, y=NULL, fill = bquote("Large\nCladocera "(m^-3))) +
+    theme_bw() + scale_y_discrete(limits = rev) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+    scale_color_manual(values=NA) + guides(color=guide_legend("<1k", override.aes=list(fill="grey50"))))
+
 # Saving plots
 png("Output/Figures/YBLTE_Point_wq_%02d.png",
-    height = 6, width = 7, units = "in", res = 1000, family = "serif")
+    height = 10, width = 12, units = "in", res = 1000, family = "serif")
 
 # cowplot::plot_grid(cowplot::plot_grid(tempplot + theme(legend.position = "none"),
 #                    doplot+ theme(legend.position = "none"),
@@ -273,7 +286,7 @@ png("Output/Figures/YBLTE_Point_wq_%02d.png",
 cowplot::plot_grid(cowplot::plot_grid(zoopplot,doplot,spcplot,turbplot,chlplot,fdomplot,
                                       align  = "v", nrow = 3))
 
-cowplot::plot_grid(cowplot::plot_grid(zoopplotdate,doplotdate,spcplotdate,turbplotdate,chlplotdate,fdomplotdate,
+cowplot::plot_grid(cowplot::plot_grid(lcladplot,doplotdate,spcplotdate,turbplotdate,chlplotdate,fdomplotdate,
                                       align  = "v", nrow = 3))
 # Merge box plots
 cowplot::plot_grid(cowplot::plot_grid(zoopbox,dobox,spcbox,turbbox,chlbox,fdombox,

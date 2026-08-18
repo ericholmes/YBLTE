@@ -2,7 +2,6 @@
 
 ### Load libraries
 library(tidyverse)
-
 library(sf)
 library(ggrepel)
 library(ggspatial)
@@ -61,7 +60,7 @@ fills <- scale_fill_manual(values = c("RCS" = "#0D0887FF",
 
 ### map
 # Read files
-proj_raw <- read_excel("Data/tabular/YBLTE_sites.xlsx")
+proj_raw <- read_excel("Data/tabular/YBLTE_sites.xlsx", sheet = 1)
 load(file = "data/spatial/Yolo_map_data.Rdata")
 
 # Convert to sf points (WGS84)
@@ -91,7 +90,7 @@ ggplot() +
                     labels = c("Yolo Bypass"), name = NULL) +
   ggnewscale::new_scale_fill() + 
   
-  geom_sf(data = nwi_yolo, aes(fill = "nwi"), color = NA, alpha = 0.6) +
+  geom_sf(data = nwi, aes(fill = "nwi"), color = NA, alpha = 0.6) +
   scale_fill_manual(
     values = c("nwi" = "forestgreen"),
     labels = c("Wetland"),
@@ -139,9 +138,7 @@ ggplot() +
 
 # dev.off()
 
-# **TODO save plot and adjust size/text size
-
-### flow
+### Flow
 # Access data
 cdec_stations <- c("RCS", "FRE", "CCY", "PTC")
 
@@ -176,7 +173,7 @@ cdec_wide <- cdec_wide %>% drop_na(discharge_cfs)
                 alpha=0.1, outline.type="lower") +
     # Frame limits, allow FRE to break out of frame
     coord_cartesian(ylim=c(0, max((cdec_wide %>% filter(Site_no!="FRE"))$discharge_cfs)), clip = "off") +
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.7) +
     theme_bw() + labs(title = "Tributary Flow", y = "Discharge (cfs)",
                       color = "Water Source", fill = "Water Source", x = NULL))
 
@@ -194,7 +191,7 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
 # Percent flow plot, stacked bar plot (daily increments)
 pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
   geom_bar(stat = "identity", alpha = 0.7, width = 1) + fills +
-  geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+  geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.7) +
   labs(title = " ", x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
 
 ### pt wq heat maps
@@ -232,8 +229,7 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7)  + 
-    scale_fill_continuous(limits=c(21 )) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Dissolved oxygen
@@ -243,7 +239,7 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Specific conductivity
@@ -251,9 +247,11 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
     geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (us/cm)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+    scale_fill_gradientn(colors = viridis::plasma(3), limits = c(100, 1000),
+                         breaks = c(seq(100,1000,250)), na.value = "#FDE725FF") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Turbidity
@@ -263,7 +261,7 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Fluorescent dissolved organic matter (FDOM)
@@ -273,7 +271,7 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Chlorophyll-a
@@ -283,7 +281,7 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Zooplankton score (1-5)
@@ -293,263 +291,46 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
 #     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
 #     geom_hline(yintercept = c(3.5, 7.5)) +
 #     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) +
-#     geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 3, alpha = 0.7) +
+#     geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
 #     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 ### Zooplankton Data
-# 1. Load data ----
+load("Data/YBLTE_zoop_clean.RData")
 
-zoop26       <- read_excel("Data/tabular/YBLTE_2026_zoop_QC.xlsx", sheet = 2)
-zooplookup   <- read.csv("Data/tabular/YBLTE_zooplookuptable_042026.csv")
+zoop_weekly_group <- zoop_weekly_group %>% filter(Site %in% sites)
+zoop_weekly_group$Cluster <- "Channel"
+zoop_weekly_group[zoop_weekly_group$Site %in% offchannel, "Cluster"] <- "Off-channel"
+zoop_weekly_group[zoop_weekly_group$Site %in% tribs, "Cluster"] <- "Tributary"
 
-# 2. Metadata attachment ----
+zoop_weekly_group$Site <- factor(zoop_weekly_group$Site, levels = c(sites))
 
-zoop26 <- zoop26 %>%
-  left_join(
-    proj_raw %>% select(Site_id, Region, Sitetype),
-    by = c("Site" = "Site_id")
-  ) |> filter(!(Site %in% c("KLWW", "LP", "WDSYB")))
+zoop_weekly_group <- zoop_weekly_group %>% filter(between(Date, as.Date(startdate), as.Date(enddate)))
 
-# 3. Clean fields: species, lifestage, splife, date ----
-
-zoop26 <- zoop26 %>%
-  mutate(
-    Species   = tolower(trimws(Species)),
-    LifeStage = tolower(trimws(LifeStage)),
-    splife = gsub("_NA$|_$", "", paste0(Species, "_", LifeStage)),
-    Date      = as.Date(Date)
-  )
-
-# 4. NC handling and aliquot-based sample estimator ----
-
-zoop26 <- zoop26 %>%
-  mutate(
-    abundance_num     = suppressWarnings(as.numeric(abundance)),
-    subsample_fraction = Volumesubsampled_ml / TotalVolume_ml,
-    sample.est         = abundance_num / subsample_fraction,
-    sample.est         = ifelse(abundance == "NC", NA, sample.est)
-  )
-
-# 5. Flowmeter distance (Global Oceanics) ----
-
-zoop26 <- zoop26 %>%
-  mutate(
-    Rotations = as.integer(FlowMeterEnd) - as.integer(FlowMeterBegin),
-    Distance  = ifelse(is.na(Rotations), 20,
-                       (Rotations * 26873) / 999999)
-  )
-
-ggplot(zoop26, aes(x = Rotations)) + geom_histogram()
-ggplot(zoop26, aes(x = Distance)) + geom_histogram()
-
-# 6. CPUE function usinDistance# 6. CPUE function using your mean(sample.est) logic ----
-
-calc_cpue_density <- function(df) {
-  
-  df %>%
-    group_by(Site, Date, splife) %>%
-    summarise(Species   = first(Species),
-              Region    = first(Region),
-              Sitetype  = first(Sitetype),
-              Ringsize  = first(RingSize_cm),
-              mean.est  = mean(sample.est, na.rm = TRUE),
-              Distance  = first(Distance),
-              .groups   = "drop") %>%
-    mutate(Volume_Sampled = pi * (((Ringsize / 2) * 0.01)^2) * Distance,
-           Density        = mean.est / Volume_Sampled)
-}
-
-##Pooled density calculation
-
-calc_cpue_density_pooled <- function(df) {
-  
-  # Step 1: Create numeric abundance and aliquot-level subsample fraction
-  df2 <- df %>%
-    mutate(
-      abundance_num = case_when(
-        abundance == "NC" ~ NA_real_,
-        TRUE ~ suppressWarnings(as.numeric(abundance))
-      ),
-      subsample_fraction = Volumesubsampled_ml / TotalVolume_ml
-    )
-  
-  # Step 2: Compute denominators per Site + Date
-  # denom_all = sum of aliquot subsample fractions
-  # denom_nc  = subsample fraction of first aliquot for NC taxa
-  denoms <- df2 %>%
-    group_by(Site, Date, SplitFraction) %>%
-    summarise(aliquot_fraction = first(subsample_fraction),
-              .groups = "drop") %>%
-    group_by(Site, Date) %>%
-    summarise(denom_all = sum(aliquot_fraction, na.rm = TRUE),
-              denom_nc  = first(aliquot_fraction),
-              .groups = "drop")
-  
-  # Step 3: Attach denominators to all rows
-  df2 <- df2 %>%
-    left_join(denoms, by = c("Site","Date"))
-  
-  # Step 4: Summarise by splife-group while using correct denominator logic
-  df2 %>%
-    group_by(Site, Date, splife) %>%
-    summarise(
-      Rotations = first(Rotations),
-      Ringsize  = first(RingSize_cm),
-      Species   = first(Species),
-      Region    = first(Region),
-      Sitetype  = first(Sitetype),
-      
-      numerator = sum(abundance_num, na.rm = TRUE),
-      
-      denominator = if (any(is.na(abundance_num))) 
-        first(denom_nc) 
-      else 
-        first(denom_all),
-      
-      TotalCount = numerator / denominator,
-      .groups = "drop"
-    ) %>%
-    mutate(
-      Distance = ifelse(is.na(Rotations), 20,
-                        (Rotations * 26873) / 999999),
-      
-      Volume_Sampled = pi * (((Ringsize / 2) * 0.01)^2) * Distance,
-      
-      Density = TotalCount / Volume_Sampled
-    )
-}
-
-zooplongmean <- calc_cpue_density(zoop26)
-zooplong <- calc_cpue_density_pooled(zoop26)
-
-(zoopexamp <- zooplong[zooplong$Site == "TEW" & zooplong$Date == as.Date("2025-12-16"),])
-
-# 7. Group taxa using lookup ----
-
-zooplong <- zooplong %>%
-  left_join(
-    zooplookup %>% select(Taxa_identified, Category, Group_family, Group_zoop),
-    by = c("Species" = "Taxa_identified")
-  ) %>%
-  rename(group = Group_zoop)
-
-zooplong$group <- ifelse(zooplong$group %in% c("Harpacticoida", "Amphipoda", "Copepoda"), "Rare", 
-                         zooplong$group)
-
-zoopgroupsum <- zooplong %>%
-  group_by(group) %>%
-  summarise(total_density = sum(Density, na.rm = TRUE))
-
-ggplot(zoopgroupsum, aes(x = reorder(group, -total_density), y = total_density)) + 
-  geom_bar(stat = "identity")
-
-# 8. Water-year day calculation ----
-
-zooplong <- zooplong %>%
-  mutate(
-    Year   = year(Date),
-    WY     = ifelse(month(Date) >= 10, Year + 1, Year),
-    wyjday = as.numeric(Date - as.Date(paste0(ifelse(month(Date)>=10,Year,Year-1), "-10-01")) + 1)
-  )
-
-
-# WEEKLY AGGREGATION
-zoop_weekly <- zooplong %>%
-  mutate(week_start = floor_date(Date, "week")) %>%
-  group_by(Site, week_start, Region) %>%
-  summarise(totezoop = sum(Density, na.rm = TRUE), .groups = "drop")
-
-## time series by site and total zoop ----
-ts_by_site <- ggplot(zoop_weekly, aes(x = week_start, y = totezoop, color = Region)) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 1.5) +
-  scale_y_continuous(labels = label_number(scale_cut = cut_short_scale())) +
-  theme_bw() +
-  facet_grid(Site ~ ., scales = "free_y") +
-  labs(
-    x = "Week",
-    y = "Zooplankton Density (m^-3)",
-    title = "Weekly Zooplankton Density by Site",
-    color = "Region"
-  ) +
-  theme(
-    strip.text.y = element_text(size = 10, face = "bold"),
-    axis.text.x  = element_text(angle = 45, hjust = 1),
-    plot.title   = element_text(size = 14, face = "bold")
-  )
-ts_by_site
-
-## time series by site with groups ----
-zoop_weekly_group <- zooplong %>%
-  mutate(week_start = floor_date(Date, "week")) %>%
-  group_by(Site, week_start, group) %>%
-  summarise(totezoop = sum(Density, na.rm = TRUE), .groups="drop")
-dput(unique(zoop_weekly_group[,"group"]))
-
-zoop_weekly_group$group <- factor(
-  zoop_weekly_group$group,
-  levels = c(
-    "Calanoida",
-    "Cyclopoida",
-    "Small cladocera",
-    "Large cladocera",
-    "Rotifera",
-    "Ostracoda",
-    "Insecta",
-    "Rare"
-  )
-)
-
-zoop_weekly_group$Sitefac <- factor(zoop_weekly_group$Site, 
-                                    levels = c("FWBN", "FW1", "KNG3", "CNW", "CCSYB", "RD22", "YBLR4", "SB4", 
-                                               "AL0", "LIS", "TER", "TEW", "STTD"))
-
-pastel_bold_pal <- c(
-  "Calanoida"        = "#4F82C8",  # bold pastel blue
-  "Cyclopoida"       = "#7FB3F0",  # lighter blue
-  "Small cladocera"  = "#7ECF82",  # light green
-  "Large cladocera"  = "#4FAF50",  # deeper green (same hue family)
-  "Small cladocera"  = "#8BCC8C",  # light green
-  "Rotifera"         = "#B38FD3",  # medium pastel-purple
-  "Ostracoda"        = "#E5C58B",  # sand / buff
-  "Insecta"          = "#F4A261"  # warm pastel orange
-)
-
-weekly_bar_by_site <- ggplot(zoop_weekly_group[!(zoop_weekly_group$group %in% c("Rare", "Copepoda")),],
-                             aes(x = week_start, y = totezoop, fill = group)) +
-  geom_bar(stat = "identity", width = 7) +
-  facet_grid(Sitefac ~ ., scales = "free_y") +
-  theme_bw() +
-  scale_x_date(date_breaks = "1 month", date_labels = "%b-%1") +
-  scale_y_continuous(labels = label_number(scale_cut = cut_short_scale())) +
-  scale_fill_manual(values = pastel_bold_pal) +
-  labs(
-    x = NULL,
-    y = "Zooplankton Density (m^-3)",
-    fill = "Group",
-    title = "Weekly Zooplankton Density by Site"
-  ) +
-  theme(
-    axis.text.x  = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom"
-  )
-
-weekly_bar_by_site
-weekly_bar_by_site + scale_y_sqrt()
+(zoopqplotdate <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Sitefac, fill = totezoop, color = "")) +
+    geom_tile(width = 7) + scale_fill_gradientn(trans = "log10", colors = viridis::plasma(3), limits = c(1000, NA),
+                                                breaks = c(1e3, 1e4, 1e5), labels = c("1k", "10k", "100k")) + 
+    labs(x = NULL, y=NULL, fill = bquote("Large\nCladocera "(m^-3))) +
+    theme_bw() + scale_y_discrete(limits = rev) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+    geom_hline(yintercept = c(3.5, 7.5)) +
+    geom_hline(yintercept = c(8.5, 9.5), linetype = 4) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
+    theme(axis.text.y =  element_text(color = cluster_ax_col)) +
+    scale_color_manual(values=NA) + guides(color=guide_legend("<1k", override.aes=list(fill="grey50"))))
 
 ### combined wq
 png("BDSC/YBLTE_Point_wq_%02d.png",
-    height = 10, width = 10, units = "in", res = 1000, family = "serif")
+    height = 15, width = 12, units = "in", res = 1000, family = "serif")
 
-cowplot::plot_grid(cowplot::plot_grid(tribflowplot1 + guides(fill = "none"),
+(cowplot::plot_grid(tribflowplot1 + guides(fill = "none"),
                                       pflowplot,
                                       tempplotdate + labs(title = "Point Water Quality") + theme(axis.text.x = element_blank()),
                                       turbplotdate + theme(axis.text.x = element_blank()),
-                                      doplotdate + theme(axis.text.x = element_blank()),
-                                      fdomplotdate + theme(axis.text.x = element_blank()),
-                                      spcplotdate,
-                                      chlplotdate,
-                                      zoopplotdate + theme(axis.text.x = element_blank()),
+                                      doplotdate,
+                                      fdomplotdate,
+                                      spcplotdate + theme(axis.text.x = element_blank()),
+                                      chlplotdate + theme(axis.text.x = element_blank()),
+                                      zoopqplotdate,
                                       align  = "v", ncol = 2))
 
 dev.off()
