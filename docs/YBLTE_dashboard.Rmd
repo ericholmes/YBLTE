@@ -109,7 +109,7 @@ enddate <- enddate <- as.POSIXct("2026-05-31")
 
 Overview {data-orientation=rows}
 =====================================
-Row {data-height='35%'}
+Row {data-height='33%'}
 -------------------------------------
 ###
 Hello!
@@ -122,7 +122,9 @@ Dominating water sources: Sacramento River, Colusa Basin (Ridgecut), Cache Creek
 
 Explore our dashboard to see what we found!
 
-Row {data-height='65%'}
+Feel free to direct any questions and/or feedback to Eric.Holmes@water.ca.gov or Kristina.Nguyen@water.ca.gov.
+
+Row {data-height='67%'}
 -------------------------------------
 ### science in action!
 ```{r}
@@ -207,7 +209,8 @@ Col {data-width='25%'}
 ### 
 The heat maps depict point water quality measurements across sites over time.
 
-- Zoop score: qualitative assay of zooplankton density, exponential from 1-5
+- Large cladocera: key zooplankton for juvenile salmon feeding.
+  - A density of 1 per L has been shown to allow for maximum growth of juvenile chinook.
 
 - SPC: specific conductivity
 
@@ -353,6 +356,13 @@ make_all_station_plots()
 
 PCA animation {data-orientation=rows}
 =====================================
+Col {data-height='80%'}
+-------------------------------------
+### 
+```{r}
+knitr::include_graphics("../Output/Figures/pca_flow_horizontal2.gif")
+```
+
 Col {data-height='20%'}
 -------------------------------------
 ### 
@@ -361,13 +371,6 @@ PCA (principal component analysis) simplifies multiple variables into components
 To interpret, each parameter has a vector showing its axis. For example, points going toward the SPC vector have higher SPC. We can thus reference the actual parameter value of each point while being able to compare them to each other on this 2D space. Essentially, points closer together are more similar.
 
 We have general areas of the main tributaries mapped out to see how points move between them across time. STTD in particular is highlighted as it's a downstream site and very influenced by how each tributary is flowing.On the right are plots showing tributary flow to compare with how sites respond accordingly.
-
-Col {data-height='80%'}
--------------------------------------
-### 
-```{r}
-knitr::include_graphics("../Output/Figures/pca_flow_horizontal2.gif")
-```
 
 3D PCA Cylinders
 =====================================
@@ -586,9 +589,11 @@ Col {data-width='75%'}
 knitr::include_graphics("../Output/Figures/YBLTE_EMMA_01.png")
 ```
 
-Zooplankton barplots
+Zooplankton barplots {data-orientation=rows}
 =====================================
-
+Col {data-height='90%'}
+-------------------------------------
+### 
 ```{r, fig.width=14, fig.height=6}
 knitr::include_graphics("../Output/Figures/Zoop_weekly01.png")
 # load(file = "../Data/YBLTE_Zoop_barplot_data.Rdata")
@@ -690,3 +695,8 @@ knitr::include_graphics("../Output/Figures/Zoop_weekly01.png")
 
 
 ```
+
+Col {data-height='10%'}
+-------------------------------------
+### 
+Zooplankton communities are important to consider in assessing the state of an ecosystem alongside suitability for fish. A large, balamced diversity builds community resilience. Additionally, each taxa provides different roles (food web interactions, nutrient cycling) and nutrition (fats. protein, nutrients). Of particular interest to juvenile chinook salmon are large cladocera, with highly energetic fats and are in the snackable size class.
