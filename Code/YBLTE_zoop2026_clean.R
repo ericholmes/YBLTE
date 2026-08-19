@@ -284,7 +284,7 @@ zoop_weekly_group$Sitefac <- factor(zoop_weekly_group$Site,
                                     levels = c("FWBN", "FW1", "KNG3", "CNW", "CCSYB", "RD22", "YBLR4", "SB4", 
                                                "AL0", "LIS", "TER", "TEW", "STTD"))
 
-# Save data to plot in other scripts
+# Save data to plot in other scripts; saved with Date instead of week_start to match wq
 # save(zoop_weekly_group, file = "Data/YBLTE_zoop_clean.RData")
 
 pastel_bold_pal <- c(
