@@ -16,7 +16,9 @@ library(plotly)
 library(dtw)
 library(pheatmap)
 library(dtwclust)
-
+library(ggtern)
+library(purrr)
+library(patchwork)
 
 ### Define poster specific parameters
 tribs <- c("FWBN", "KLWW", "CCSYB")
@@ -24,8 +26,8 @@ channel <- c("RD22", "AL0", "LIS", "STTD")
 offchannel <- c("YBLR4", "SB4", "TEW")
 sites <- c(tribs, channel, offchannel)
 
-startdate <- "2025-12-01"
-enddate <- "2026-04-01"
+startdate <- as.Date("2025-12-01")
+enddate <- as.Date("2026-04-01")
 
 satellitedates <- c("2026-01-08", "2026-02-12", "2026-03-04", "2026-03-09") %>% as.Date()
 
@@ -80,9 +82,12 @@ yolo_bypass <- bypasses[bypasses$Feature_Name %in%
 # Set CRS of water data
 WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 
+# Ridgecut area
+ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
+
 # Plot map
-# tiff("BDSC/YBLTE_Sites%02da.tif",
-#      height = 6, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")
+tiff("BDSC/YBLTE_Sites%02da.tif",
+     height = 6, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")
 
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'a'), color = NA) +
@@ -102,6 +107,7 @@ ggplot() +
   
   geom_sf(data = WW_Watershed_wgs84, fill = "#33599C", color = "#33599C") +
   geom_sf(data = rivers_major, color = "#33599C") +
+  geom_sf(data = ridgecut, color = "#33599C") +
   
   geom_sf(data = roads_filtered, color = "grey60") +
   ggnewscale::new_scale_fill() + theme_bw() +
@@ -111,13 +117,16 @@ ggplot() +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
   
-  geom_text_repel(aes(x = -121.848, y = 38.716, label = "Cache Creek"), 
+  geom_text(aes(x = -121.837, y = 38.705, label = "Cache\nCreek"), 
                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
-                  bg.color = "white", bg.r = 0.1, angle = 33.6) +
+                  bg.color = "white", bg.r = 0.1, angle = 45) +
   geom_text_repel(aes(x = -121.87, y = 38.541, label = "Putah Creek"), 
                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, angle = -10) +
-  geom_text_repel(aes(x = -121.731, y = 38.824, label = "Sacramento\nRiver"), 
+  geom_text_repel(aes(x = -121.72, y = 38.77, label = "Ridgecut\nSlough"), 
+                  data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
+  geom_text_repel(aes(x = -121.671, y = 38.83, label = "Sacramento River"), 
                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
   geom_text_repel(aes(x = -121.63, y = 38.825, label = "Feather\nRiver"), 
@@ -136,7 +145,7 @@ ggplot() +
   labs(title = "Yolo Bypass Lower Trophic Expansion Sites",
        x = NULL, y = NULL, shape = "Site Type", fill = "Site Type", label = "")
 
-# dev.off()
+dev.off()
 
 ### Flow
 # Access data
@@ -196,35 +205,35 @@ pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_n
 
 ### pt wq heat maps
 # Load data
-wqp <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
-wqp <- filter(wqp, Sample_Type=="zoop")
+wqp_raw <- readxl::read_excel("Data/tabular/YBLTE_point_wq.xlsx")
 
 # Clean data
+wq <- wqp_raw %>% filter(Sample_Type=="zoop") %>% 
+  mutate(
+    Date = as.Date(Date),
+    datetime = as_datetime(Date),
+    fdom_qsu = suppressWarnings(as.numeric(fdom_qsu)),
+    Zoop_score = as.numeric(Zoop_score)
+  ) %>% 
+  filter(Site %in% sites)
+
+wq$Cluster <- "Channel"
+wq[wq$Site %in% offchannel, "Cluster"] <- "Off-channel"
+wq[wq$Site %in% tribs, "Cluster"] <- "Tributary"
+
+wq$Sitefac <- factor(wq$Site, levels = c(sites))
+
+cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purple", times=3))
+
+wqp <- wq %>% filter(between(Date, as.Date(startdate), as.Date(enddate)))
 wqp$week <- as.integer(format(wqp$Date, format = "%W"))
 wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
 wqp$weekchr <- as.character(wqp$week)
 
-wqp$fdom_qsu <- as.numeric(wqp$fdom_qsu)
-
-wqp$Zoop_score <- as.numeric(wqp$Zoop_score)
-
-wqp$Date <-as.Date(wqp$Date)
-
-wqp <- wqp %>% filter(between(Date, as.Date(startdate), as.Date(enddate)))
-
-wqp <- wqp %>% filter(Site %in% sites)
-wqp$Cluster <- "Channel"
-wqp[wqp$Site %in% offchannel, "Cluster"] <- "Off-channel"
-wqp[wqp$Site %in% tribs, "Cluster"] <- "Tributary"
-
-wqp$Sitefac <- factor(wqp$Site, levels = c(sites))
-
-cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purple", times=3))
-
 # Plot heat maps
 # Temperature
 (tempplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Temp)) + 
-    geom_tile(width = 7) + labs(title = "Point Water Quality", x = NULL, y=NULL, fill = "Temp (C)") +
+    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "Temp (C)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
@@ -234,7 +243,7 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
 
 # Dissolved oxygen
 (doplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = DO_mgl)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mg/l)") +
+    geom_tile(width = 8) + labs(title = " ", x = NULL, y=NULL, fill = "DO (mg/l)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
@@ -244,7 +253,7 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
 
 # Specific conductivity
 (spcplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = SPC_uscm)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (us/cm)") +
+    geom_tile(width = 8) + labs(title = "Point Water Quality", x = NULL, y=NULL, fill = "SPC (us/cm)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     scale_fill_gradientn(colors = viridis::plasma(3), limits = c(100, 1000),
@@ -256,7 +265,7 @@ cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purpl
 
 # Turbidity
 (turbplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Turb_fnu)) + 
-    geom_tile(width = 8) + labs(title = " ", x = NULL, y=NULL, fill = "Turb (FNU)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Turb (FNU)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
@@ -302,11 +311,11 @@ zoop_weekly_group$Cluster <- "Channel"
 zoop_weekly_group[zoop_weekly_group$Site %in% offchannel, "Cluster"] <- "Off-channel"
 zoop_weekly_group[zoop_weekly_group$Site %in% tribs, "Cluster"] <- "Tributary"
 
-zoop_weekly_group$Site <- factor(zoop_weekly_group$Site, levels = c(sites))
-
 zoop_weekly_group <- zoop_weekly_group %>% filter(between(Date, as.Date(startdate), as.Date(enddate)))
 
-(zoopqplotdate <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Sitefac, fill = totezoop, color = "")) +
+zoop_weekly_group$Site <- factor(zoop_weekly_group$Site, levels = c(sites))
+
+(zoopqplotdate <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Site, fill = totezoop, color = "")) +
     geom_tile(width = 7) + scale_fill_gradientn(trans = "log10", colors = viridis::plasma(3), limits = c(1000, NA),
                                                 breaks = c(1e3, 1e4, 1e5), labels = c("1k", "10k", "100k")) + 
     labs(x = NULL, y=NULL, fill = bquote("Large\nCladocera "(m^-3))) +
@@ -319,26 +328,33 @@ zoop_weekly_group <- zoop_weekly_group %>% filter(between(Date, as.Date(startdat
     scale_color_manual(values=NA) + guides(color=guide_legend("<1k", override.aes=list(fill="grey50"))))
 
 ### combined wq
-png("BDSC/YBLTE_Point_wq_%02d.png",
-    height = 15, width = 12, units = "in", res = 1000, family = "serif")
+# png("BDSC/YBLTE_Point_wq_%02d.png",
+#     height = 10, width = 12, units = "in", res = 1000, family = "serif")
 
-(cowplot::plot_grid(tribflowplot1 + guides(fill = "none"),
-                                      pflowplot,
-                                      tempplotdate + labs(title = "Point Water Quality") + theme(axis.text.x = element_blank()),
-                                      turbplotdate + theme(axis.text.x = element_blank()),
-                                      doplotdate,
-                                      fdomplotdate,
-                                      spcplotdate + theme(axis.text.x = element_blank()),
-                                      chlplotdate + theme(axis.text.x = element_blank()),
-                                      zoopqplotdate,
-                                      align  = "v", ncol = 2))
+# (cowplot::plot_grid(tribflowplot1 + guides(fill = "none"),
+#                                       pflowplot,
+#                                       tempplotdate + labs(title = "Point Water Quality") + theme(axis.text.x = element_blank()),
+#                                       turbplotdate + theme(axis.text.x = element_blank()),
+#                                       doplotdate,
+#                                       fdomplotdate,
+#                                       spcplotdate + theme(axis.text.x = element_blank()),
+#                                       chlplotdate + theme(axis.text.x = element_blank()),
+#                                       zoopqplotdate,
+#                                       align  = "v", ncol = 2))
+(cowplot::plot_grid(spcplotdate + theme(axis.text.x = element_blank()),
+                    doplotdate + theme(axis.text.x = element_blank()),
+                    fdomplotdate + theme(axis.text.x = element_blank()),
+                    turbplotdate + theme(axis.text.x = element_blank()),
+                    chlplotdate,
+                    zoopqplotdate,
+                    align  = "v", ncol = 2))
 
-dev.off()
+# dev.off()
 
 ### pca
-# Filter var of interest; temp too variable (discrete data),
+# Filter var of interest; temp too variable (discrete data), pH no big influence
 # sal and TDS like SPC, pc like chlorop, zoop not at every site
-pc_in <- wqp %>% subset(select=c("RowID","Site","Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
+pc_in <- wqp %>% subset(select=c("RowID","Site","Sitefac", "Date", "DO_mgl", "SPC_uscm",          
                           "Turb_fnu", "CHL_ugl", "fdom_qsu", "week"))
 
 rownames(pc_in) <- paste(pc_in$Site, pc_in$RowID)
@@ -367,7 +383,7 @@ scaling_factor <- 1.2 * max(abs(pc_score[, 1:2]))
 pc_load_scaled <- pc_load*scaling_factor
 
 # PCA plot
-ggplot()+
+pca_plt <- ggplot()+
   stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
                  subset(select = -c(week)), geom = "polygon",
                aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.2) +
@@ -384,6 +400,14 @@ ggplot()+
        color="Site", fill="Site", shape="Site")+
   theme_bw() + cols + fills +
   scale_shape_manual(values = c(1:14))
+
+# Save plot
+# png("BDSC/YBLTE_wq_PCA_%02d.png",
+#     height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
+
+pca_plt
+
+# dev.off()
 
 ### 3D plot, considers time, highlights STTD and YBLR4
 
@@ -509,7 +533,7 @@ p <- p %>% layout(
 # For poster, select channel, off-channel, then everything
 p
 
-### dtw
+### DTW
 traj_multi <- lapply(sites, function(s) {
   df <- subset(pc_score, Sitefac == s)
   df <- df[order(df$week), ]
@@ -538,8 +562,8 @@ ann_colors = list(
   cluster = c(Tributary = "purple", Channel = "steelblue", `Off-channel` = "gold")
 )
 
-png("BDSC/YBLTE_Point_wq_DTW_clust_mv%02d.png",
-    height = 6, width = 7, units = "in", res = 1000, family = "serif")
+# png("BDSC/YBLTE_Point_wq_DTW_clust_mv%02d.png",
+#     height = 6, width = 7, units = "in", res = 1000, family = "serif")
 
 pheatmap(
   dtw_multi,
@@ -552,4 +576,181 @@ pheatmap(
   main = "Multivariate DTW Distance (PC1 + PC2)"
 )
 
+# dev.off()
+
+### EMMA
+wq_emma <- wq %>%
+  mutate(
+    datetime = as_datetime(Date),
+    week = floor_date(datetime, "week"),
+    SPC = SPC_uscm,
+    FDOM = fdom_qsu
+  ) %>%
+  filter(!is.na(SPC), !is.na(FDOM))
+
+# weekly endmembers
+endm <- wq_emma %>%
+  filter(Site %in% tribs) %>%
+  group_by(week, Site) %>%
+  summarize(SPC = mean(SPC), FDOM = mean(FDOM), .groups = "drop") %>%
+  pivot_wider(
+    names_from = Site,
+    values_from = c(SPC, FDOM),
+    names_sep = "_"
+  )
+
+# weekly mixing sites
+mix <- wq_emma %>%
+  filter(!Site %in% tribs) %>%
+  group_by(week, Site) %>%
+  summarize(SPC = mean(SPC), FDOM = mean(FDOM), .groups = "drop")
+
+# join mixing sites with endmembers
+emma_df <- mix %>%
+  left_join(endm, by = "week")
+
+# PCA
+pca_emma <- prcomp(emma_df %>% select(SPC, FDOM), scale. = TRUE)
+
+emma_df <- emma_df %>%
+  mutate(
+    PC1 = pca_emma$x[,1],
+    PC2 = pca_emma$x[,2]
+  )
+
+# Project endmembers into PC space
+project_pc <- function(spc, fdom) {
+  predict(pca_emma, newdata = data.frame(SPC = spc, FDOM = fdom))
+}
+
+endm_pc <- endm %>%
+  mutate(
+    PC_FWBN  = project_pc(SPC_FWBN,  FDOM_FWBN),
+    PC_CCSYB = project_pc(SPC_CCSYB, FDOM_CCSYB),
+    PC_KLWW  = project_pc(SPC_KLWW,  FDOM_KLWW)
+  ) %>%
+  mutate(
+    PC1_FWBN  = PC_FWBN[,1],  PC2_FWBN  = PC_FWBN[,2],
+    PC1_CCSYB = PC_CCSYB[,1], PC2_CCSYB = PC_CCSYB[,2],
+    PC1_KLWW  = PC_KLWW[,1],  PC2_KLWW  = PC_KLWW[,2]
+  ) %>%
+  select(-PC_FWBN, -PC_CCSYB, -PC_KLWW)
+
+# EMMA solver
+solve_emma <- function(px, py, ex1, ey1, ex2, ey2, ex3, ey3) {
+  A <- matrix(c(
+    ex1, ex2, ex3,
+    ey1, ey2, ey3,
+    1,   1,   1
+  ), 3, 3, byrow = TRUE)
+  
+  b <- c(px, py, 1)
+  
+  if (any(is.na(c(A, b)))) return(c(NA, NA, NA))
+  
+  out <- tryCatch(solve(A, b), error = function(e) c(NA, NA, NA))
+  as.numeric(out)
+}
+
+# Compute EMMA fractions
+emma_fractions <- emma_df %>%
+  rowwise() %>%
+  mutate(
+    frac = list(
+      solve_emma(
+        PC1, PC2,
+        endm_pc$PC1_FWBN[match(week, endm_pc$week)],
+        endm_pc$PC2_FWBN[match(week, endm_pc$week)],
+        endm_pc$PC1_CCSYB[match(week, endm_pc$week)],
+        endm_pc$PC2_CCSYB[match(week, endm_pc$week)],
+        endm_pc$PC1_KLWW[match(week, endm_pc$week)],
+        endm_pc$PC2_KLWW[match(week, endm_pc$week)]
+      )
+    ),
+    f_FWBN_raw  = frac[1],
+    f_CCSYB_raw = frac[2],
+    f_KLWW_raw  = frac[3]
+  ) %>%
+  ungroup()
+
+# Diagnostics + clamping + renormalization
+emma_clean <- emma_fractions %>%
+  mutate(
+    # raw sum
+    sum_raw = f_FWBN_raw + f_CCSYB_raw + f_KLWW_raw,
+    
+    # clamp
+    f_FWBN  = pmax(pmin(f_FWBN_raw,  1), 0),
+    f_CCSYB = pmax(pmin(f_CCSYB_raw, 1), 0),
+    f_KLWW  = pmax(pmin(f_KLWW_raw,  1), 0),
+    
+    sum_clamp = f_FWBN + f_CCSYB + f_KLWW,
+    
+    # renormalize for plotting
+    f_FWBN_plot  = f_FWBN  / sum_clamp,
+    f_CCSYB_plot = f_CCSYB / sum_clamp,
+    f_KLWW_plot  = f_KLWW  / sum_clamp,
+    
+    # diagnostics
+    neg_flag = (f_FWBN_raw < 0 | f_CCSYB_raw < 0 | f_KLWW_raw < 0),
+    deviation = abs(sum_raw - 1),
+    unexplained = pmax(0, 1 - sum_raw),
+    
+    unexplained_flag = case_when(
+      neg_flag ~ "Extrapolated",
+      deviation > 0.25 ~ "Large mismatch",
+      deviation > 0.10 ~ "Moderate mismatch",
+      TRUE ~ "Well explained"
+    )
+  )
+
+# Percent-source long format
+emma_long <- emma_clean %>%
+  select(week, Site, f_FWBN_plot, f_CCSYB_plot, f_KLWW_plot) %>%
+  pivot_longer(
+    cols = starts_with("f_"),
+    names_to = "source",
+    values_to = "fraction"
+  ) %>%
+  mutate(
+    source = recode(source,
+                    f_FWBN_plot  = "FWBN",
+                    f_CCSYB_plot = "CCSYB",
+                    f_KLWW_plot  = "KLWW"
+    ),
+    Site = factor(Site, levels = c(channel, offchannel))
+  )
+
+# Percent-source time series (channel then offchannel)
+(emmaplot <- ggplot(emma_long[is.na(emma_long$Site) == F,], aes(week, fraction, fill = source)) +
+   geom_col(alpha=0.7) +
+   facet_grid(Site ~ .) + fills +
+   labs(
+     title = "EMMA Percent Source Contribution",
+     x = NULL,
+     y = "Fraction",
+     fill = "Water Source"
+   ) + 
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.7) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%b-1",
+                    limits = c(startdate, enddate)) +
+   theme_bw() +
+    # Saving with blue then yellow, will paste one over other
+    theme(strip.background = element_rect(fill=alpha("steelblue", 0.5))))
+                                                    #"gold3", 0.5))))
+
+dates <- unique(data.frame(emma_long[is.na(emma_long$Site) == F,"week"]))
+
+# Add flow
+final_plot <- tribflowplot1  /
+  pflowplot /
+  emmaplot +
+  plot_layout(heights = c(1, 1, 5))
+
+png(paste("BDSC/YBLTE_EMMA_%02d.png", sep = ""), 
+    height = 10, width = 8, unit = "in", res = 1000)
+
+final_plot
+
 dev.off()
+
