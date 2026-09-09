@@ -21,7 +21,7 @@ library(purrr)
 library(patchwork)
 
 ### Define poster specific parameters
-tribs <- c("FWBN", "KLWW", "CCSYB")
+tribs <- c("Sac River", "Ridgecut", "Cache")
 channel <- c("RD22", "AL0", "LIS", "STTD")
 offchannel <- c("YBLR4", "SB4", "TEW")
 sites <- c(tribs, channel, offchannel)
@@ -31,7 +31,11 @@ enddate <- as.Date("2026-04-01")
 
 satellitedates <- c("2026-01-08", "2026-02-12", "2026-03-04", "2026-03-09") %>% as.Date()
 
-cols <- scale_color_manual(values = c("RCS" = "#0D0887FF",
+cols <- scale_color_manual(values = c("Ridgecut" = "#0D0887FF",
+                                      "Sac River" = "#CC4678FF",
+                                      "Cache" = "#F89441FF",
+                                      "Putah" = "#B3BA18",
+                                      "RCS" = "#0D0887FF",
                                        "FRE" = "#CC4678FF",
                                        "CCY" = "#F89441FF",
                                        "PTC" = "#B3BA18",
@@ -45,7 +49,11 @@ cols <- scale_color_manual(values = c("RCS" = "#0D0887FF",
                                        "YBLR4" = "#4AC16DFF", 
                                        "SB4" = "#9FDA3AFF", 
                                        "TEW" = "#C4B31D"))
-fills <- scale_fill_manual(values = c("RCS" = "#0D0887FF",
+fills <- scale_fill_manual(values = c("Ridgecut" = "#0D0887FF",
+                                      "Sac River" = "#CC4678FF",
+                                      "Cache" = "#F89441FF",
+                                      "Putah" = "#B3BA18",
+                                      "RCS" = "#0D0887FF",
                                       "FRE" = "#CC4678FF",
                                       "CCY" = "#F89441FF",
                                       "PTC" = "#F0F921FF",
@@ -85,38 +93,58 @@ WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 # Ridgecut area
 ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 
+# Change trib names
+proj_pts <- proj_pts %>% 
+  mutate(across('Site_id', str_replace, 'FWBN', 'Big Notch/\nSac River')) %>% 
+  mutate(across('Site_id', str_replace, 'KLWW', 'Ridgecut')) %>% 
+  mutate(across('Site_id', str_replace, 'CCSYB', 'Cache Creek'))
+
 # Plot map
-tiff("BDSC/YBLTE_Sites%02da.tif",
-     height = 6, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")
+# tiff("BDSC/YBLTE_Sites%02da.tif",
+#      height = 10, width = 7, units = "in", res = 1000, family = "serif", compression = "lzw")
 
 ggplot() + 
-  geom_sf(data = yolo_bypass, aes(fill = 'a'), color = NA) +
-  scale_fill_manual(values = c('a' = alpha('#33599C', 0.5)), 
-                    labels = c("Yolo Bypass"), name = NULL) +
-  ggnewscale::new_scale_fill() + 
+  geom_sf(data = yolo_bypass, aes(fill = 'Yolo Bypass'), color = NA) +
   
-  geom_sf(data = nwi, aes(fill = "nwi"), color = NA, alpha = 0.6) +
+  geom_sf(data = nwi, aes(fill = "NWI Wetlands"), color = NA, alpha = 0.6) +
+  
+  geom_sf(data = cdl_sf, aes(fill = "Rice Field"), color = NA, alpha = 0.9) +
   scale_fill_manual(
-    values = c("nwi" = "forestgreen"),
-    labels = c("Wetland"),
-    name = NULL
-  ) + ggnewscale::new_scale_color() + ggnewscale::new_scale_fill() + 
-  
-  geom_sf(data = cdl_sf, aes(fill = "b"), color = NA, alpha = 0.9) +
-  scale_fill_manual(values = c('b' = 'wheat2'), labels = c("Rice Field"), name = NULL) +
-  
+    name   = "Landcover",
+    values = c(
+      "Yolo Bypass" = alpha('#33599C', 0.5),
+      "NWI Wetlands" = "forestgreen",
+      "Rice Field"   = "wheat2"
+    ),
+    breaks = c("Yolo Bypass", "NWI Wetlands", "Rice Field"),
+    labels = c("Yolo Bypass", "NWI Wetlands", "Rice Field"),
+    guide = guide_legend(
+      override.aes = list(
+        shape = 22,      # square patch
+        size  = 5,
+        color = "grey50"
+      )
+    )
+  ) +  
   geom_sf(data = WW_Watershed_wgs84, fill = "#33599C", color = "#33599C") +
   geom_sf(data = rivers_major, color = "#33599C") +
   geom_sf(data = ridgecut, color = "#33599C") +
   
   geom_sf(data = roads_filtered, color = "grey60") +
   ggnewscale::new_scale_fill() + theme_bw() +
-  
+  geom_sf(data = proj_pts, show.legend = F,
+          aes(shape = Cluster, fill = ifelse(Site_id=='Big Notch/\nSac River', 'a',
+                                             ifelse(Site_id=='Ridgecut', 'b', 
+                                                    ifelse(Site_id=='Cache Creek', 'c', 
+                                                           'd')))), size = 5, linewidth = 2) +
+  scale_fill_manual(values = c('a'=alpha("#CC4678FF", 0.6), 'b'=alpha("#0D0887FF", 0.6), 
+                               'c'=alpha("#F89441FF", 0.6), 'd'=alpha('red', 0))) +
+  ggnewscale::new_scale_fill() + 
   geom_sf(data = proj_pts, 
           aes(shape = Cluster, fill = Cluster), size = 5, linewidth = 2) +
   scale_shape_manual(values = 21:23) +
-  scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
-  
+  scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0))) +
+
   geom_text(aes(x = -121.837, y = 38.705, label = "Cache\nCreek"), 
                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, angle = 45) +
@@ -143,9 +171,24 @@ ggplot() +
                          height = unit(0.3,"in"), width = unit(0.3,"in"),
                          pad_x = unit(0.06, "in"), pad_y = unit(0.25, "in")) + 
   labs(title = "Yolo Bypass Lower Trophic Expansion Sites",
-       x = NULL, y = NULL, shape = "Site Type", fill = "Site Type", label = "")
+       x = NULL, y = NULL, shape = "Site Type", fill = "Site Type", label = "") +
+  theme(
+    # Move legend inside top-right
+    legend.position   = c(0.98, 0.98),
+    legend.justification = c(1, 1),
+    
+    # Styling
+    legend.background = element_rect(fill = alpha("white", 0.9), color = "black", size = 0.5),
+    legend.key        = element_rect(fill = alpha("white", 0.9), color = "grey60"),
+    legend.title      = element_text(size = 9, face = "bold"),
+    legend.text       = element_text(size = 8),
+    
+    # Shrink legend spacing
+    legend.box.spacing = unit(1, "mm"),
+    legend.key.size    = unit(3.5, "mm")
+  )
 
-dev.off()
+# dev.off()
 
 ### Flow
 # Access data
@@ -169,7 +212,14 @@ cdec_wide <- cdecmerge %>% select(-parameterCd) %>%
 
 cdec_wide$Date <- as.Date(cdec_wide$Datetime)
 
-cdec_wide$Site_no <- factor(cdec_wide$Site_no, levels = c("RCS", "FRE", "CCY", "PTC"))
+# Change trib names
+cdec_wide <- cdec_wide %>% 
+  mutate(across('Site_no', str_replace, 'FRE', 'Sac River')) %>% 
+  mutate(across('Site_no', str_replace, 'RCS', 'Ridgecut')) %>% 
+  mutate(across('Site_no', str_replace, 'CCY', 'Cache')) %>% 
+  mutate(across('Site_no', str_replace, 'PTC', 'Putah'))
+
+cdec_wide$Site_no <- factor(cdec_wide$Site_no, levels = c("Sac River", "Ridgecut", "Cache", "Putah"))
 
 cdec_wide <- cdec_wide %>% drop_na(discharge_cfs)
 
@@ -181,8 +231,9 @@ cdec_wide <- cdec_wide %>% drop_na(discharge_cfs)
     geom_ribbon(aes(ymin=0, ymax=discharge_cfs, fill=Site_no), 
                 alpha=0.1, outline.type="lower") +
     # Frame limits, allow FRE to break out of frame
-    coord_cartesian(ylim=c(0, max((cdec_wide %>% filter(Site_no!="FRE"))$discharge_cfs)), clip = "off") +
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.7) +
+    coord_cartesian(ylim=c(0, max((cdec_wide %>% filter(Site_no!="Sac River"))$discharge_cfs)), clip = "off") +
+    geom_vline(xintercept = satellitedates, color = "white", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
     theme_bw() + labs(title = "Tributary Flow", y = "Discharge (cfs)",
                       color = "Water Source", fill = "Water Source", x = NULL))
 
@@ -200,8 +251,22 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
 # Percent flow plot, stacked bar plot (daily increments)
 pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
   geom_bar(stat = "identity", alpha = 0.7, width = 1) + fills +
-  geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.7) +
+  geom_vline(xintercept = satellitedates, color = "white", linewidth = 2, alpha = 0.8) +
+  geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
   labs(title = " ", x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
+
+# Saving just flow
+# png("BDSC/YBLTE_Flow_wq_%02d.png",
+#     height = 6, width = 12, units = "in", res = 1000, family = "serif")
+
+(cowplot::plot_grid(tribflowplot1 +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+                            plot.margin = unit(c(0,0,0,0), "lines")), pflowplot +
+                      theme(plot.margin = unit(c(0,0,0,0), "lines")),
+                    align  = "v", ncol = 1))
+
+# dev.off()
+
 
 ### pt wq heat maps
 # Load data
@@ -214,7 +279,13 @@ wq <- wqp_raw %>% filter(Sample_Type=="zoop") %>%
     datetime = as_datetime(Date),
     fdom_qsu = suppressWarnings(as.numeric(fdom_qsu)),
     Zoop_score = as.numeric(Zoop_score)
-  ) %>% 
+  )
+
+# Change trib names
+wq <- wq %>% 
+  mutate(across('Site', str_replace, 'FWBN', 'Sac River')) %>% 
+  mutate(across('Site', str_replace, 'KLWW', 'Ridgecut')) %>% 
+  mutate(across('Site', str_replace, 'CCSYB', 'Cache')) %>%
   filter(Site %in% sites)
 
 wq$Cluster <- "Channel"
@@ -223,9 +294,9 @@ wq[wq$Site %in% tribs, "Cluster"] <- "Tributary"
 
 wq$Sitefac <- factor(wq$Site, levels = c(sites))
 
-cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), rep("purple", times=3))
+cluster_ax_col <- c(rep("gold3", times=3), rep("steelblue", times=4), "#F89441FF","#0D0887FF","#CC4678FF")
 
-wqp <- wq %>% filter(between(Date, as.Date(startdate), as.Date(enddate)))
+wqp <- wq %>% filter(between(Date, startdate, enddate))
 wqp$week <- as.integer(format(wqp$Date, format = "%W"))
 wqp$week <- ifelse(wqp$week>=43, wqp$week-43, wqp$week+9)
 wqp$weekchr <- as.character(wqp$week)
@@ -234,63 +305,69 @@ wqp$weekchr <- as.character(wqp$week)
 # Temperature
 (tempplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Temp)) + 
     geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "Temp (C)") +
-    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "black", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Dissolved oxygen
 (doplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = DO_mgl)) + 
-    geom_tile(width = 8) + labs(title = " ", x = NULL, y=NULL, fill = "DO (mg/l)") +
-    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mg/l)") +
+    theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "black", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Specific conductivity
 (spcplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = SPC_uscm)) + 
-    geom_tile(width = 8) + labs(title = "Point Water Quality", x = NULL, y=NULL, fill = "SPC (us/cm)") +
-    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (us/cm)") +
+    theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    scale_fill_gradientn(colors = viridis::plasma(3), limits = c(100, 1000),
+    scale_fill_gradientn(colors = viridis::viridis(3), limits = c(100, 1000),
                          breaks = c(seq(100,1000,250)), na.value = "#FDE725FF") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "black", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Turbidity
 (turbplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Turb_fnu)) + 
     geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Turb (FNU)") +
-    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "black", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Fluorescent dissolved organic matter (FDOM)
 (fdomplotdate <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = Date, y = Sitefac, fill = fdom_qsu)) + 
     geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "FDOM (QSU)") +
-    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "black", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Chlorophyll-a
 (chlplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = CHL_ugl)) + 
     geom_tile(width = 8) + labs(x = NULL, y= NULL, fill = "Chl (ug/l)") +
-    theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
+    theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) + 
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "black", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col)))
 
 # Zooplankton score (1-5)
@@ -305,49 +382,56 @@ wqp$weekchr <- as.character(wqp$week)
 
 ### Zooplankton Data
 load("Data/YBLTE_zoop_clean.RData")
+# Change trib names
+zoop_weekly_group <- zoop_weekly_group %>% 
+  mutate(across('Site', str_replace, 'FWBN', 'Sac River')) %>% 
+  mutate(across('Site', str_replace, 'KLWW', 'Ridgecut')) %>% 
+  mutate(across('Site', str_replace, 'CCSYB', 'Cache')) %>%
+  filter(Site %in% sites)
 
-zoop_weekly_group <- zoop_weekly_group %>% filter(Site %in% sites)
 zoop_weekly_group$Cluster <- "Channel"
 zoop_weekly_group[zoop_weekly_group$Site %in% offchannel, "Cluster"] <- "Off-channel"
 zoop_weekly_group[zoop_weekly_group$Site %in% tribs, "Cluster"] <- "Tributary"
 
-zoop_weekly_group <- zoop_weekly_group %>% filter(between(Date, as.Date(startdate), as.Date(enddate)))
+zoop_weekly_group <- zoop_weekly_group %>% filter(between(Date, startdate, enddate))
 
 zoop_weekly_group$Site <- factor(zoop_weekly_group$Site, levels = c(sites))
 
 (zoopqplotdate <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Site, fill = totezoop, color = "")) +
-    geom_tile(width = 7) + scale_fill_gradientn(trans = "log10", colors = viridis::plasma(3), limits = c(1000, NA),
+    geom_tile(width = 7) + scale_fill_gradientn(trans = "log10", colors = viridis::viridis(3), limits = c(1000, NA),
                                                 breaks = c(1e3, 1e4, 1e5), labels = c("1k", "10k", "100k")) + 
     labs(x = NULL, y=NULL, fill = bquote("Large\nCladocera "(m^-3))) +
     theme_bw() + scale_y_discrete(limits = rev) +
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
     geom_hline(yintercept = c(8.5, 9.5), linetype = 4) +
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
-    theme(axis.text.y =  element_text(color = cluster_ax_col)) +
+    geom_vline(xintercept = satellitedates, color = "black", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
+    theme(axis.text.y =  element_text(color = cluster_ax_col[-9])) +
     scale_color_manual(values=NA) + guides(color=guide_legend("<1k", override.aes=list(fill="grey50"))))
 
 ### combined wq
 # png("BDSC/YBLTE_Point_wq_%02d.png",
 #     height = 10, width = 12, units = "in", res = 1000, family = "serif")
 
-# (cowplot::plot_grid(tribflowplot1 + guides(fill = "none"),
-#                                       pflowplot,
-#                                       tempplotdate + labs(title = "Point Water Quality") + theme(axis.text.x = element_blank()),
-#                                       turbplotdate + theme(axis.text.x = element_blank()),
-#                                       doplotdate,
-#                                       fdomplotdate,
-#                                       spcplotdate + theme(axis.text.x = element_blank()),
-#                                       chlplotdate + theme(axis.text.x = element_blank()),
-#                                       zoopqplotdate,
-#                                       align  = "v", ncol = 2))
-(cowplot::plot_grid(spcplotdate + theme(axis.text.x = element_blank()),
-                    doplotdate + theme(axis.text.x = element_blank()),
-                    fdomplotdate + theme(axis.text.x = element_blank()),
-                    turbplotdate + theme(axis.text.x = element_blank()),
-                    chlplotdate,
-                    zoopqplotdate,
-                    align  = "v", ncol = 2))
+(cowplot::plot_grid(spcplotdate + #labs(title = "Point Water Quality") +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
+                                      doplotdate + #labs(title = " ") +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
+                                      fdomplotdate +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
+                                      turbplotdate +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
+                                      chlplotdate,
+                                      zoopqplotdate,
+                                      align  = "v", ncol = 2))
+# (cowplot::plot_grid(spcplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
+#                     doplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
+#                     fdomplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
+#                     turbplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
+#                     chlplotdate,
+#                     zoopqplotdate,
+#                     align  = "v", ncol = 2))
 
 # dev.off()
 
@@ -384,7 +468,7 @@ pc_load_scaled <- pc_load*scaling_factor
 
 # PCA plot
 pca_plt <- ggplot()+
-  stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
+  stat_ellipse(data = pc_score %>% filter(Sitefac %in% tribs) %>%
                  subset(select = -c(week)), geom = "polygon",
                aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.2) +
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
