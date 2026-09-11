@@ -77,11 +77,21 @@ load(file = "data/spatial/Yolo_map_data.Rdata")
 proj_pts <- proj_raw %>%
   st_as_sf(coords = c("Lon", "Lat"), crs = 4326, remove = FALSE)
 
+# Change trib names
+proj_pts <- proj_pts %>% 
+  mutate(across('Site_id', str_replace, 'FWBN', 'Sac River')) %>% 
+  mutate(across('Site_id', str_replace, 'KLWW', 'Ridgecut')) %>% 
+  mutate(across('Site_id', str_replace, 'CCSYB', 'Cache'))
+
 # Filter data points and add clusters
 proj_pts <- proj_pts %>% filter(Site_id %in% sites)
-proj_pts$Cluster <- "Channel"
+proj_pts$Cluster <- "Tributary"
 proj_pts[proj_pts$Site_id %in% offchannel, "Cluster"] <- "Off-channel"
-proj_pts[proj_pts$Site_id %in% tribs, "Cluster"] <- "Tributary"
+proj_pts[proj_pts$Site_id %in% channel, "Cluster"] <- "Channel"
+
+# Add Big Notch label
+proj_pts <- proj_pts %>% 
+  mutate(across('Site_id', str_replace, 'Sac River', 'Big Notch /\nSac River'))
 
 # Subset bypasses to only Yolo
 yolo_bypass <- bypasses[bypasses$Feature_Name %in% 
@@ -93,15 +103,9 @@ WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 # Ridgecut area
 ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 
-# Change trib names
-proj_pts <- proj_pts %>% 
-  mutate(across('Site_id', str_replace, 'FWBN', 'Big Notch/\nSac River')) %>% 
-  mutate(across('Site_id', str_replace, 'KLWW', 'Ridgecut')) %>% 
-  mutate(across('Site_id', str_replace, 'CCSYB', 'Cache Creek'))
-
 # Plot map
 # tiff("BDSC/YBLTE_Sites%02da.tif",
-#      height = 10, width = 7, units = "in", res = 1000, family = "serif", compression = "lzw")
+#      height = 8, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")
 
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'Yolo Bypass'), color = NA) +
@@ -133,9 +137,9 @@ ggplot() +
   geom_sf(data = roads_filtered, color = "grey60") +
   ggnewscale::new_scale_fill() + theme_bw() +
   geom_sf(data = proj_pts, show.legend = F,
-          aes(shape = Cluster, fill = ifelse(Site_id=='Big Notch/\nSac River', 'a',
+          aes(shape = Cluster, fill = ifelse(Site_id=='Big Notch /\nSac River', 'a',
                                              ifelse(Site_id=='Ridgecut', 'b', 
-                                                    ifelse(Site_id=='Cache Creek', 'c', 
+                                                    ifelse(Site_id=='Cache', 'c', 
                                                            'd')))), size = 5, linewidth = 2) +
   scale_fill_manual(values = c('a'=alpha("#CC4678FF", 0.6), 'b'=alpha("#0D0887FF", 0.6), 
                                'c'=alpha("#F89441FF", 0.6), 'd'=alpha('red', 0))) +
@@ -146,16 +150,16 @@ ggplot() +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0))) +
 
   geom_text(aes(x = -121.837, y = 38.705, label = "Cache\nCreek"), 
-                  data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  data = NULL, color = "#F89441FF", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, angle = 45) +
   geom_text_repel(aes(x = -121.87, y = 38.541, label = "Putah Creek"), 
-                  data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  data = NULL, color = "#B3BA18", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, angle = -10) +
   geom_text_repel(aes(x = -121.72, y = 38.77, label = "Ridgecut\nSlough"), 
-                  data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  data = NULL, color = "#0D0887FF", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
   geom_text_repel(aes(x = -121.671, y = 38.83, label = "Sacramento River"), 
-                  data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  data = NULL, color = "#CC4678FF", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
   geom_text_repel(aes(x = -121.63, y = 38.825, label = "Feather\nRiver"), 
                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
@@ -253,7 +257,7 @@ pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_n
   geom_bar(stat = "identity", alpha = 0.7, width = 1) + fills +
   geom_vline(xintercept = satellitedates, color = "white", linewidth = 2, alpha = 0.8) +
   geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
-  labs(title = " ", x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
+  labs(x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
 
 # Saving just flow
 # png("BDSC/YBLTE_Flow_wq_%02d.png",
@@ -339,7 +343,7 @@ wqp$weekchr <- as.character(wqp$week)
 
 # Turbidity
 (turbplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Turb_fnu)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Turb (FNU)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Turbidity (FNU)") +
     theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
@@ -408,23 +412,81 @@ zoop_weekly_group$Site <- factor(zoop_weekly_group$Site, levels = c(sites))
     geom_vline(xintercept = satellitedates, color = "black", linewidth = 2, alpha = 0.8) +
     geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col[-9])) +
-    scale_color_manual(values=NA) + guides(color=guide_legend("<1k", override.aes=list(fill="grey50"))))
+    scale_color_manual(values=NA) + guides(color=guide_legend("<1k", 
+                                                              override.aes=list(fill="grey50"), position = "bottom")))
 
 ### combined wq
 # png("BDSC/YBLTE_Point_wq_%02d.png",
-#     height = 10, width = 12, units = "in", res = 1000, family = "serif")
+#     height = 12, width = 8, units = "in", res = 1000, family = "serif")
 
-(cowplot::plot_grid(spcplotdate + #labs(title = "Point Water Quality") +
-                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
-                                      doplotdate + #labs(title = " ") +
-                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
-                                      fdomplotdate +
-                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
-                                      turbplotdate +
-                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
-                                      chlplotdate,
-                                      zoopqplotdate,
-                                      align  = "v", ncol = 2))
+# (cowplot::plot_grid(tribflowplot1 +
+#                       theme(plot.margin = unit(c(0,0,0,0), "lines")), 
+#                     pflowplot + labs(title = " ") +
+#                       theme(plot.margin = unit(c(0,0,0,0), "lines")), 
+#                     spcplotdate + labs(title = "Point Water Quality") +
+#                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+#                             plot.margin = unit(c(.1,.1,.1,.1), "lines")),
+#                                       doplotdate + labs(title = " ") +
+#                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+#                             plot.margin = unit(c(.1,.1,.1,.1), "lines")),
+#                                       fdomplotdate +
+#                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+#                             plot.margin = unit(c(.1,.1,.1,.1), "lines")),
+#                                       turbplotdate +
+#                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+#                             plot.margin = unit(c(.1,.1,.1,.1), "lines")),
+#                                       chlplotdate + 
+#                       theme(plot.margin = unit(c(.1,.1,.1,.1), "lines")),
+#                                       zoopqplotdate + 
+#                       theme(plot.margin = unit(c(.1,.1,.1,.1), "lines")),
+#                                       align  = "v", ncol = 2))
+(cowplot::plot_grid(tribflowplot1 +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+                            plot.margin = unit(c(0,0,0,0), "lines"),
+                            legend.key.size = unit(0.3, "cm"),
+                            legend.text = element_text(size = 6),
+                            legend.title = element_text(size = 8)), 
+                    pflowplot +
+                      theme(plot.margin = unit(c(0,0,0,0), "lines"),
+                            legend.key.size = unit(0.3, "cm"),
+                            legend.text = element_text(size = 6),
+                            legend.title = element_text(size = 8)), 
+                    spcplotdate + labs(title = "Point Water Quality") +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+                            plot.margin = unit(c(.1,.1,.1,.1), "lines"),
+                            legend.key.size = unit(0.3, "cm"),
+                            legend.text = element_text(size = 6),
+                            legend.title = element_text(size = 8)),
+                    doplotdate + #labs(title = " ") +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+                            plot.margin = unit(c(.1,.1,.1,.1), "lines"),
+                            legend.key.size = unit(0.3, "cm"),
+                            legend.text = element_text(size = 6),
+                            legend.title = element_text(size = 8)),
+                    fdomplotdate +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+                            plot.margin = unit(c(.1,.1,.1,.1), "lines"),
+                            legend.key.size = unit(0.3, "cm"),
+                            legend.text = element_text(size = 6),
+                            legend.title = element_text(size = 8)),
+                    turbplotdate +
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+                            plot.margin = unit(c(.1,.1,.1,.1), "lines"),
+                            legend.key.size = unit(0.3, "cm"),
+                            legend.text = element_text(size = 6),
+                            legend.title = element_text(size = 8)),
+                    chlplotdate + 
+                      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+                            plot.margin = unit(c(.1,.1,.1,.1), "lines"),
+                            legend.key.size = unit(0.3, "cm"),
+                            legend.text = element_text(size = 6),
+                            legend.title = element_text(size = 8)),
+                    zoopqplotdate + 
+                      theme(plot.margin = unit(c(.1,.1,.1,.1), "lines"),
+                            legend.key.size = unit(0.3, "cm"),
+                            legend.text = element_text(size = 6),
+                            legend.title = element_text(size = 8)),
+                    align  = "v", ncol = 1))
 # (cowplot::plot_grid(spcplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
 #                     doplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
 #                     fdomplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
