@@ -51,7 +51,7 @@ cols <- scale_color_manual(values = c("Ridgecut" = "#0D0887FF",
                                        "TEW" = "#C4B31D"))
 fills <- scale_fill_manual(values = c("Ridgecut" = "#0D0887FF",
                                       "Sac River" = "#CC4678FF",
-                                      "Cache" = "#F89441FF",
+                                      "Cache" = "#CF7500",
                                       "Putah" = "#B3BA18",
                                       "RCS" = "#0D0887FF",
                                       "FRE" = "#CC4678FF",
@@ -104,24 +104,24 @@ WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 
 # Plot map
-# tiff("BDSC/YBLTE_Sites%02da.tif",
-#      height = 8, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")
+tiff("BDSC/YBLTE_Sites%02da.tif",
+     height = 8, width = 5, units = "in", res = 1000, family = "serif", compression = "lzw")
 
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'Yolo Bypass'), color = NA) +
   
   geom_sf(data = nwi, aes(fill = "NWI Wetlands"), color = NA, alpha = 0.6) +
   
-  geom_sf(data = cdl_sf, aes(fill = "Rice Field"), color = NA, alpha = 0.9) +
+  geom_sf(data = cdl_sf, aes(fill = "CDL 2024\nRice Field"), color = NA, alpha = 0.9) +
   scale_fill_manual(
     name   = "Landcover",
     values = c(
       "Yolo Bypass" = alpha('#33599C', 0.5),
       "NWI Wetlands" = "forestgreen",
-      "Rice Field"   = "wheat2"
+      "CDL 2024\nRice Field"   = "wheat2"
     ),
-    breaks = c("Yolo Bypass", "NWI Wetlands", "Rice Field"),
-    labels = c("Yolo Bypass", "NWI Wetlands", "Rice Field"),
+    breaks = c("Yolo Bypass", "NWI Wetlands", "CDL 2024\nRice Field"),
+    labels = c("Yolo Bypass", "NWI Wetlands", "CDL 2024\nRice Field"),
     guide = guide_legend(
       override.aes = list(
         shape = 22,      # square patch
@@ -184,15 +184,16 @@ ggplot() +
     # Styling
     legend.background = element_rect(fill = alpha("white", 0.9), color = "black", size = 0.5),
     legend.key        = element_rect(fill = alpha("white", 0.9), color = "grey60"),
-    legend.title      = element_text(size = 9, face = "bold"),
-    legend.text       = element_text(size = 8),
+    text = element_text(size = 16),
+    legend.title      = element_text(size = 10, face = "bold"),
+    legend.text       = element_text(size = 10),
     
     # Shrink legend spacing
     legend.box.spacing = unit(1, "mm"),
     legend.key.size    = unit(3.5, "mm")
   )
 
-# dev.off()
+dev.off()
 
 ### Flow
 # Access data
@@ -236,9 +237,9 @@ cdec_wide <- cdec_wide %>% drop_na(discharge_cfs)
                 alpha=0.1, outline.type="lower") +
     # Frame limits, allow FRE to break out of frame
     coord_cartesian(ylim=c(0, max((cdec_wide %>% filter(Site_no!="Sac River"))$discharge_cfs)), clip = "off") +
-    geom_vline(xintercept = satellitedates, color = "white", linewidth = 2, alpha = 0.8) +
-    geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
-    theme_bw() + labs(title = "Tributary Flow", y = "Discharge (cfs)",
+    geom_vline(xintercept = satellitedates, color = "orange", linewidth = 2, alpha = 0.8) +
+    geom_vline(xintercept = satellitedates, color = "maroon", linewidth = 1.5, alpha = 0.5) +
+    theme_bw() + labs(y = "Discharge (cfs)",
                       color = "Water Source", fill = "Water Source", x = NULL))
 
 # Plotting percent flow
@@ -255,8 +256,8 @@ flow_perc <- flow_zero %>% group_by(Date, Site_no) %>%
 # Percent flow plot, stacked bar plot (daily increments)
 pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_no, fill = Site_no)) +
   geom_bar(stat = "identity", alpha = 0.7, width = 1) + fills +
-  geom_vline(xintercept = satellitedates, color = "white", linewidth = 2, alpha = 0.8) +
-  geom_vline(xintercept = satellitedates, color = "cornflowerblue", linewidth = 1.5, alpha = 0.8) +
+  geom_vline(xintercept = satellitedates, color = "darkorange4", linewidth = 2, alpha = 0.8) +
+  geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
   labs(x = NULL, y = "Percent Flow", fill = "Water Source") + theme_bw()
 
 # Saving just flow
@@ -265,8 +266,10 @@ pflowplot <- ggplot(data = flow_perc, aes(x = Date, y = percflow, group = Site_n
 
 (cowplot::plot_grid(tribflowplot1 +
                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
-                            plot.margin = unit(c(0,0,0,0), "lines")), pflowplot +
-                      theme(plot.margin = unit(c(0,0,0,0), "lines")),
+                            plot.margin = unit(c(0,0,0,0), "lines"),
+                            text=element_text(size=16)), pflowplot +
+                      theme(plot.margin = unit(c(0,0,0,0), "lines"),
+                            text=element_text(size=16)),
                     align  = "v", ncol = 1))
 
 # dev.off()
@@ -319,7 +322,7 @@ wqp$weekchr <- as.character(wqp$week)
 
 # Dissolved oxygen
 (doplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = DO_mgl)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mg/l)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mg/L)") +
     theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
@@ -330,7 +333,7 @@ wqp$weekchr <- as.character(wqp$week)
 
 # Specific conductivity
 (spcplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = SPC_uscm)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (us/cm)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (uS/cm)") +
     theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     scale_fill_gradientn(colors = viridis::viridis(3), limits = c(100, 1000),
@@ -365,7 +368,7 @@ wqp$weekchr <- as.character(wqp$week)
 
 # Chlorophyll-a
 (chlplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = CHL_ugl)) + 
-    geom_tile(width = 8) + labs(x = NULL, y= NULL, fill = "Chl (ug/l)") +
+    geom_tile(width = 8) + labs(x = NULL, y= NULL, fill = "Chlorophyll (ug/L)") +
     theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +
@@ -413,11 +416,11 @@ zoop_weekly_group$Site <- factor(zoop_weekly_group$Site, levels = c(sites))
     geom_vline(xintercept = satellitedates, color = "white", linewidth = 1.5, alpha = 0.8) +
     theme(axis.text.y =  element_text(color = cluster_ax_col[-9])) +
     scale_color_manual(values=NA) + guides(color=guide_legend("<1k", 
-                                                              override.aes=list(fill="grey50"), position = "bottom")))
+                                                              override.aes=list(fill="grey50"))))
 
 ### combined wq
 # png("BDSC/YBLTE_Point_wq_%02d.png",
-#     height = 12, width = 8, units = "in", res = 1000, family = "serif")
+#     height = 15, width = 10, units = "in", res = 1000, family = "serif")
 
 # (cowplot::plot_grid(tribflowplot1 +
 #                       theme(plot.margin = unit(c(0,0,0,0), "lines")), 
@@ -444,48 +447,56 @@ zoop_weekly_group$Site <- factor(zoop_weekly_group$Site, levels = c(sites))
                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
                             plot.margin = unit(c(0,0,0,0), "lines"),
                             legend.key.size = unit(0.3, "cm"),
-                            legend.text = element_text(size = 6),
-                            legend.title = element_text(size = 8)), 
+                            text=element_text(size=16),
+                            legend.text = element_text(size = 10),
+                            legend.title = element_text(size = 12)),
                     pflowplot +
                       theme(plot.margin = unit(c(0,0,0,0), "lines"),
                             legend.key.size = unit(0.3, "cm"),
-                            legend.text = element_text(size = 6),
-                            legend.title = element_text(size = 8)), 
-                    spcplotdate + labs(title = "Point Water Quality") +
+                            text=element_text(size=16),
+                            legend.text = element_text(size = 10),
+                            legend.title = element_text(size = 12)),
+                    spcplotdate + #labs(title = "Point Water Quality") +
                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
                             plot.margin = unit(c(.1,.1,.1,.1), "lines"),
                             legend.key.size = unit(0.3, "cm"),
-                            legend.text = element_text(size = 6),
-                            legend.title = element_text(size = 8)),
+                            text=element_text(size=16),
+                            legend.text = element_text(size = 10),
+                            legend.title = element_text(size = 12)),
                     doplotdate + #labs(title = " ") +
                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
                             plot.margin = unit(c(.1,.1,.1,.1), "lines"),
                             legend.key.size = unit(0.3, "cm"),
-                            legend.text = element_text(size = 6),
-                            legend.title = element_text(size = 8)),
+                            text=element_text(size=16),
+                            legend.text = element_text(size = 10),
+                            legend.title = element_text(size = 12)),
                     fdomplotdate +
                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
                             plot.margin = unit(c(.1,.1,.1,.1), "lines"),
                             legend.key.size = unit(0.3, "cm"),
-                            legend.text = element_text(size = 6),
-                            legend.title = element_text(size = 8)),
+                            text=element_text(size=16),
+                            legend.text = element_text(size = 10),
+                            legend.title = element_text(size = 12)),
                     turbplotdate +
                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
                             plot.margin = unit(c(.1,.1,.1,.1), "lines"),
                             legend.key.size = unit(0.3, "cm"),
-                            legend.text = element_text(size = 6),
-                            legend.title = element_text(size = 8)),
+                            text=element_text(size=16),
+                            legend.text = element_text(size = 10),
+                            legend.title = element_text(size = 12)),
                     chlplotdate + 
                       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
                             plot.margin = unit(c(.1,.1,.1,.1), "lines"),
                             legend.key.size = unit(0.3, "cm"),
-                            legend.text = element_text(size = 6),
-                            legend.title = element_text(size = 8)),
+                            text=element_text(size=16),
+                            legend.text = element_text(size = 10),
+                            legend.title = element_text(size = 12)),
                     zoopqplotdate + 
                       theme(plot.margin = unit(c(.1,.1,.1,.1), "lines"),
                             legend.key.size = unit(0.3, "cm"),
-                            legend.text = element_text(size = 6),
-                            legend.title = element_text(size = 8)),
+                            text=element_text(size=16),
+                            legend.text = element_text(size = 10),
+                            legend.title = element_text(size = 12)),
                     align  = "v", ncol = 1))
 # (cowplot::plot_grid(spcplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
 #                     doplotdate + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()),
@@ -528,6 +539,9 @@ pc_load <- as.data.frame(pc$rotation[, 1:2])
 scaling_factor <- 1.2 * max(abs(pc_score[, 1:2]))
 pc_load_scaled <- pc_load*scaling_factor
 
+# Rename variables
+row.names(pc_load_scaled) <- c('DO', 'SPC', 'Turbidity', 'Chlorophyll', 'FDOM')
+
 # PCA plot
 pca_plt <- ggplot()+
   stat_ellipse(data = pc_score %>% filter(Sitefac %in% tribs) %>%
@@ -544,16 +558,16 @@ pca_plt <- ggplot()+
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
        color="Site", fill="Site", shape="Site")+
-  theme_bw() + cols + fills +
+  theme_bw() + cols + fills + theme(text = element_text(size = 16)) +
   scale_shape_manual(values = c(1:14))
 
 # Save plot
-# png("BDSC/YBLTE_wq_PCA_%02d.png",
-#     height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
+png("BDSC/YBLTE_wq_PCA_%02d.png",
+    height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
 
 pca_plt
 
-# dev.off()
+dev.off()
 
 ### 3D plot, considers time, highlights STTD and YBLR4
 
