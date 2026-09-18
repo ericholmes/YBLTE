@@ -103,9 +103,10 @@ WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 # Ridgecut area
 ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 
+set.seed(67)
 # Plot map
-tiff("BDSC/YBLTE_Sites%02da.tif",
-     height = 8, width = 5, units = "in", res = 1000, family = "serif", compression = "lzw")
+# tiff("BDSC/YBLTE_Sites%02da.tif",
+#      height = 8, width = 5, units = "in", res = 1000, family = "serif", compression = "lzw")
 
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'Yolo Bypass'), color = NA) +
@@ -149,17 +150,17 @@ ggplot() +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0))) +
 
-  geom_text(aes(x = -121.837, y = 38.705, label = "Cache\nCreek"), 
-                  data = NULL, color = "#F89441FF", size = 3, fontface = "bold",
-                  bg.color = "white", bg.r = 0.1, angle = 45) +
+  geom_text_repel(aes(x = -121.82, y = 38.695, label = "Cache\nCreek"), 
+                  data = NULL, color = "darkorange3", size = 3.5, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1) +
   geom_text_repel(aes(x = -121.87, y = 38.541, label = "Putah Creek"), 
-                  data = NULL, color = "#B3BA18", size = 3, fontface = "bold",
+                  data = NULL, color = "yellow4", size = 3.5, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, angle = -10) +
   geom_text_repel(aes(x = -121.72, y = 38.77, label = "Ridgecut\nSlough"), 
-                  data = NULL, color = "#0D0887FF", size = 3, fontface = "bold",
+                  data = NULL, color = "#0D0887FF", size = 3.5, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
   geom_text_repel(aes(x = -121.671, y = 38.83, label = "Sacramento River"), 
-                  data = NULL, color = "#CC4678FF", size = 3, fontface = "bold",
+                  data = NULL, color = "#CC4678FF", size = 3.5, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
   geom_text_repel(aes(x = -121.63, y = 38.825, label = "Feather\nRiver"), 
                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
@@ -193,7 +194,7 @@ ggplot() +
     legend.key.size    = unit(3.5, "mm")
   )
 
-dev.off()
+# dev.off()
 
 ### Flow
 # Access data
@@ -542,10 +543,20 @@ pc_load_scaled <- pc_load*scaling_factor
 # Rename variables
 row.names(pc_load_scaled) <- c('DO', 'SPC', 'Turbidity', 'Chlorophyll', 'FDOM')
 
+trib_fills <- scale_fill_manual(values = c("Ridgecut" = "#0D0887FF",
+                                                    "Sac River" = "#CC4678FF",
+                                                    "Cache" = "#CF7500",
+                                                    "RD22" = NA, 
+                                                    "AL0" = NA, 
+                                                    "LIS" = NA,
+                                                    "STTD" = NA,
+                                                    "YBLR4" = NA, 
+                                                    "SB4" = NA, 
+                                                    "TEW" = NA))
+
 # PCA plot
 pca_plt <- ggplot()+
-  stat_ellipse(data = pc_score %>% filter(Sitefac %in% tribs) %>%
-                 subset(select = -c(week)), geom = "polygon",
+  stat_ellipse(data = pc_score, geom = "polygon",
                aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.2) +
   geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
                alpha=0.5, color="black", linewidth=0.8)+
@@ -558,16 +569,17 @@ pca_plt <- ggplot()+
        x=paste0("PC1 (", pc1_v, "% Variance)"),
        y=paste0("PC2 (", pc2_v, "% Variance)"),
        color="Site", fill="Site", shape="Site")+
-  theme_bw() + cols + fills + theme(text = element_text(size = 16)) +
+  theme_bw() + cols + trib_fills + theme(text = element_text(size = 16),
+                                         legend.position = "") +
   scale_shape_manual(values = c(1:14))
 
 # Save plot
-png("BDSC/YBLTE_wq_PCA_%02d.png",
-    height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
+# png("BDSC/YBLTE_wq_PCA_%02d.png",
+#     height = 5.5, width = 6.5, units = "in", res = 1000, family = "serif")
 
 pca_plt
 
-dev.off()
+# dev.off()
 
 ### 3D plot, considers time, highlights STTD and YBLR4
 
