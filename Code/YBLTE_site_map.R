@@ -165,59 +165,106 @@ leaflet(rest_polys) %>%
 
 ## Static map ---------------------------------------------------------------
 WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
+ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 
-if(saveoutput == T){tiff("Output/Maps/YBLTE_Sites%02da.tif",
-                                 height = 6, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")}
+if(saveoutput == T){tiff("Output/Maps/YBLTE_Sites%02daTEST.tif",
+                                 height = 8, width = 5, units = "in", res = 1000, family = "serif", compression = "lzw")}
 
 ggplot() + 
-  geom_sf(data = yolo_bypass, aes(fill = 'a'), color = NA) +
-  scale_fill_manual(values = c('a' = alpha('#33599C', 0.5)), 
-                    labels = c("Yolo Bypass"), name = NULL) +
-  ggnewscale::new_scale_fill() + 
+  geom_sf(data = yolo_bypass, aes(fill = 'Yolo Bypass'), color = NA) +
   
-  geom_sf(data = cari, aes(fill = 'w', color = 'w'), alpha = 0.9) +
-  scale_fill_manual(values = c('w' = "#66C2A4"), labels = c("Wetland"), name = NULL) + 
-  scale_color_manual(values = c('w' = "#66C2A4"), labels = c("Wetland"), name = NULL) +
-  ggnewscale::new_scale_color() + ggnewscale::new_scale_fill() + 
+  geom_sf(data = nwi, aes(fill = "NWI Wetlands"), color = NA, alpha = 0.6) +
   
-  geom_sf(data = cdl_sf, aes(fill = "b"), color = NA, alpha = 0.9) +
-  scale_fill_manual(values = c('b' = 'wheat2'), labels = c("Rice Field"), name = NULL) +
-  
+  geom_sf(data = cdl_sf, aes(fill = "CDL 2024\nRice Field"), color = NA, alpha = 0.9) +
+  scale_fill_manual(
+    name   = "Landcover",
+    values = c(
+      "Yolo Bypass" = alpha('#33599C', 0.5),
+      "NWI Wetlands" = "forestgreen",
+      "CDL 2024\nRice Field"   = "wheat2"
+    ),
+    breaks = c("Yolo Bypass", "NWI Wetlands", "CDL 2024\nRice Field"),
+    labels = c("Yolo Bypass", "NWI Wetlands", "CDL 2024\nRice Field"),
+    guide = guide_legend(
+      override.aes = list(
+        shape = 22,      # square patch
+        size  = 5,
+        color = "grey50"
+      )
+    )
+  ) +  
   geom_sf(data = WW_Watershed_wgs84, fill = "#33599C", color = "#33599C") +
   geom_sf(data = rivers_major, color = "#33599C") +
- 
+  geom_sf(data = ridgecut, color = "#33599C") +
+  
   geom_sf(data = roads_filtered, color = "grey60") +
   ggnewscale::new_scale_fill() + theme_bw() +
   
-  geom_sf(data = proj_pts %>% filter(Sampletype=="main"), 
+  geom_sf(data = proj_pts %>% filter(Sampletype=="outsource"), 
+          aes(shape = " "), color = "darkred", size = 5, linewidth = 3) +
+  scale_shape_manual(
+    name   = "Outsourced\nData",
+    values = c(
+      " " = 8
+    ),
+    breaks = c(" "),
+    labels = c(" "),
+    # guide = guide_legend(
+    #   override.aes = list(
+    #     shape = 22,      # square patch
+    #     size  = 5,
+    #     color = "grey50"
+    #   )
+    # )
+  ) +  ggnewscale::new_scale('shape') +
+  geom_sf(data = proj_pts %>% filter(Sampletype!="test"), 
           aes(shape = Sitetype, fill = Sitetype), size = 4, linewidth = 2) +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
   
-  geom_text_repel(aes(x = -121.848, y = 38.716, label = "Cache Creek"), 
-                  data = NULL, color = "#1A3057", size = 3, fontface = "bold",
-                  bg.color = "white", bg.r = 0.1, angle = 33.6) +
+  geom_text_repel(aes(x = -121.82, y = 38.695, label = "Cache\nCreek"), 
+                  data = NULL, color = "#1A3057", size = 3.5, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1) +
   geom_text_repel(aes(x = -121.87, y = 38.541, label = "Putah Creek"), 
-             data = NULL, color = "#1A3057", size = 3, fontface = "bold",
-             bg.color = "white", bg.r = 0.1, angle = -10) +
-  geom_text_repel(aes(x = -121.731, y = 38.824, label = "Sacramento\nRiver"), 
-                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  data = NULL, color = "#1A3057", size = 3.5, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1, angle = -10) +
+  geom_text_repel(aes(x = -121.72, y = 38.77, label = "Ridgecut\nSlough"), 
+                  data = NULL, color = "#1A3057", size = 3.5, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
+  geom_text_repel(aes(x = -121.671, y = 38.83, label = "Sacramento River"), 
+                  data = NULL, color = "#1A3057", size = 3.5, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "right") +
   geom_text_repel(aes(x = -121.63, y = 38.825, label = "Feather\nRiver"), 
-                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
-                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "left") +
-  geom_text_repel(data = proj_pts %>% filter(Sampletype=="main"), 
+                  data = NULL, color = "#1A3057", size = 3, fontface = "bold",
+                  bg.color = "white", bg.r = 0.1, force = 0, hjust = "left") +
+  geom_text_repel(data = proj_pts %>% filter(Sampletype!="test"), 
                   aes(geometry = geometry, label = Site_id), 
-                   stat = "sf_coordinates", size = 3, bg.color = alpha("white", 0.6),
-                   color = "black", bg.r = 0.1, fontface = "bold") +
-  coord_sf(xlim = c(-121.9, -121.4), ylim = c(38.15, 38.85), expand = FALSE) +
+                  stat = "sf_coordinates", size = 4, bg.color = alpha("white", 0.6),
+                  color = "black", bg.r = 0.1, fontface = "bold") +
+  coord_sf(xlim = c(-121.95, -121.4), ylim = c(38.15, 38.85), expand = FALSE) +
   annotation_scale(location = "bl", width_hint = 0.2, line_width = 1) + 
   annotation_north_arrow(location = "bl", which_north = "false", 
                          style = north_arrow_fancy_orienteering(),
                          height = unit(0.3,"in"), width = unit(0.3,"in"),
                          pad_x = unit(0.06, "in"), pad_y = unit(0.25, "in")) + 
-  labs(title = "Map of Yolo Bypass Lower Trophic Expansion Sites",
-       x = NULL, y = NULL, shape = "Site Type", fill = "Site Type", label = "")
+  labs(title = "Yolo Bypass Lower Trophic Expansion Sites",
+       x = NULL, y = NULL, shape = "Site Type", fill = "Site Type", label = "") +
+  theme(
+    # Move legend inside top-left
+    legend.position   = c(0.25, 0.50),
+    legend.justification = c(1, 1),
+    
+    # Styling
+    legend.background = element_rect(fill = alpha("white", 0.9), color = "black", size = 0.5),
+    legend.key        = element_rect(fill = alpha("white", 0.9), color = "grey60"),
+    text = element_text(size = 16),
+    legend.title      = element_text(size = 10, face = "bold"),
+    legend.text       = element_text(size = 10),
+    
+    # Shrink legend spacing
+    legend.box.spacing = unit(1, "mm"),
+    legend.key.size    = unit(3.5, "mm")
+  )
 
 if(saveoutput == T){dev.off()}
 
