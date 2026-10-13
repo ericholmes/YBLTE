@@ -312,7 +312,7 @@ wqp$weekchr <- as.character(wqp$week)
 # Plot heat maps
 # Temperature
 (tempplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Temp)) + 
-    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "Temp (C)") +
+    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "Temperature (C)") +
     theme_bw() + scale_fill_viridis_c() + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     geom_hline(yintercept = c(3.5, 7.5)) +

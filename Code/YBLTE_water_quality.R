@@ -18,6 +18,7 @@ animCol <- scale_color_manual(values = c("KNL" = "#440154FF",
                                           "CCY" = "#FB8861FF",
                                           "YBY" = "#31688EFF",
                                           "PTC" = "#CED483",
+                                          "YFF" = "grey50",
                                           "FWBN" = "#B63679FF", 
                                           "FW1" = "#440154FF", 
                                           "KLWW" = "#482878FF",
@@ -40,6 +41,7 @@ animFill <- scale_fill_manual(values = c("KNL" = "#440154FF",
                                           "CCY" = "#FB8861FF",
                                           "YBY" = "#31688EFF",
                                           "PTC" = "#E0E092",
+                                          "YFF" = "grey50",
                                           "FWBN" = "#B63679FF", 
                                           "FW1" = "#440154FF", 
                                           "KLWW" = "#482878FF",
@@ -165,43 +167,52 @@ cdec_wide <- rbind(cdec_wide, yff_cdec)
 # Heat map to see change over time and site variation; with week number or date
 # Boxplots for more specific range/differences between sites
 
+# FRE overtopping
+sacflood <- cdec_wide %>% filter((Site_no=="FRE")&(stage_ft>32))
+
 # Temperature
 (tempplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = Temp)) + 
   geom_raster() + labs(x = "Week", y=NULL, fill = "Temp (C)") +
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
   theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (tempplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Temp)) + 
-    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "Temp (C)") +
+    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = expression("Temperature (°C)")) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
-  scale_x_date(date_breaks = "1 month", date_labels = "%b"))
+    scale_x_date(date_breaks = "1 month", date_labels = "%b")+
+    geom_point(data=sacflood, aes(x=Datetime, y=14.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
+    geom_point(data=sacflood, aes(x=Datetime, y=0.5), size=4, shape=15, color='steelblue1', inherit.aes = F))
 (tempbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Temp)) + 
     geom_boxplot() + labs(x = NULL, y = "Temp (C)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 # Dissolved oxygen
 (doplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = DO_mgl)) + 
-    geom_raster() + labs(x = "Week", y=NULL, fill = "DO (mgl)") +
+    geom_raster() + labs(x = "Week", y=NULL, fill = "DO (mg/L)") +
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (doplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = DO_mgl)) + 
     geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mgl)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
-    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
+    scale_x_date(date_breaks = "1 month", date_labels = "%b")+
+    geom_point(data=sacflood, aes(x=Datetime, y=14.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
+    geom_point(data=sacflood, aes(x=Datetime, y=0.5), size=4, shape=15, color='steelblue1', inherit.aes = F))
 (dobox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = DO_mgl)) + 
     geom_boxplot() + labs(x = NULL, y = "DO (mgl)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 # Specific conductivity
 (spcplot <- ggplot(wqp %>% drop_na(Sitefac), aes(x = week, y = Sitefac, fill = SPC_uscm)) + 
-    geom_raster() + labs(x = "Week", y=NULL, fill = "SPC (uscm)") +
+    geom_raster() + labs(x = "Week", y=NULL, fill = "SPC (uS/cm)") +
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (spcplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = SPC_uscm)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "SPC (uscm)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = expression("SPC ("*mu*"scm)")) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     scale_fill_gradientn(colors = viridis::plasma(3), limits = c(100, 1000),
-                           breaks = c(seq(100,1000,250)), na.value = "#FDE725FF"))
+                           breaks = c(seq(100,1000,250)), na.value = "#FDE725FF")+
+    geom_point(data=sacflood, aes(x=Datetime, y=14.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
+    geom_point(data=sacflood, aes(x=Datetime, y=0.5), size=4, shape=15, color='steelblue1', inherit.aes = F))
 (spcbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = SPC_uscm)) + 
     geom_boxplot() + labs(x = NULL, y = "SPC (uscm)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
@@ -212,9 +223,11 @@ cdec_wide <- rbind(cdec_wide, yff_cdec)
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (turbplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = Turb_fnu)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Turb (FNU)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "Turbidity (FNU)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
-    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
+    scale_x_date(date_breaks = "1 month", date_labels = "%b")+
+    geom_point(data=sacflood, aes(x=Datetime, y=14.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
+    geom_point(data=sacflood, aes(x=Datetime, y=0.5), size=4, shape=15, color='steelblue1', inherit.aes = F))
 (turbbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = Turb_fnu)) + 
     geom_boxplot() + labs(x = NULL, y = "Turb (FNU)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
@@ -225,22 +238,26 @@ cdec_wide <- rbind(cdec_wide, yff_cdec)
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (chlplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = CHL_ugl)) + 
-    geom_tile(width = 8) + labs(x = NULL, y= NULL, fill = "Chl (ugl)") +
+    geom_tile(width = 8) + labs(x = NULL, y= NULL, fill = expression("Chlorophyll ("*mu*"g/L)")) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
-    scale_x_date(date_breaks = "1 month", date_labels = "%b"))
+    scale_x_date(date_breaks = "1 month", date_labels = "%b")+
+    geom_point(data=sacflood, aes(x=Datetime, y=14.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
+    geom_point(data=sacflood, aes(x=Datetime, y=0.5), size=4, shape=15, color='steelblue1', inherit.aes = F))
 (chlbox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = CHL_ugl)) + 
     geom_boxplot() + labs(x = NULL, y = "Chl (ugl)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
 
 # Fluorescent dissolved organic matter (FDOM)
 (fdomplot <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = week, y = Sitefac, fill = fdom_qsu)) + 
-    geom_raster() + labs(x = "Week", y=NULL, fill = "FDOM (qsu)") +
+    geom_raster() + labs(x = "Week", y=NULL, fill = "FDOM (QSU)") +
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (fdomplotdate <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = Date, y = Sitefac, fill = fdom_qsu)) + 
     geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "FDOM (qsu)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
-    scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = (as.Date(c("2025-11-01", "2026-05-01")))))
+    scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = (as.Date(c("2025-11-01", "2026-05-01"))))+
+    geom_point(data=sacflood, aes(x=Datetime, y=14.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
+    geom_point(data=sacflood, aes(x=Datetime, y=0.5), size=4, shape=15, color='steelblue1', inherit.aes = F))
 (fdombox <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Sitefac, y = fdom_qsu)) + 
     geom_boxplot() + labs(x = NULL, y = "FDOM (qsu)") +
     theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1)))
@@ -261,13 +278,15 @@ cdec_wide <- rbind(cdec_wide, yff_cdec)
 # Large cladocera (from zoop script)
 load("Data/YBLTE_zoop_clean.RData")
 
-(lcladplot <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Sitefac, fill = totezoop, color = "")) +
+(lcladplot <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Site, fill = totezoop, color = "")) +
     geom_tile(width = 7) + scale_fill_gradientn(trans = "log10", colors = viridis::plasma(3), limits = c(1000, NA),
                                                 breaks = c(1e3, 1e4, 1e5), labels = c("1k", "10k", "100k")) + 
     labs(x = NULL, y=NULL, fill = bquote("Large\nCladocera "(m^-3))) +
     theme_bw() + scale_y_discrete(limits = rev) +
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    scale_color_manual(values=NA) + guides(color=guide_legend("<1k", override.aes=list(fill="grey50"))))
+    scale_color_manual(values=NA) + guides(color=guide_legend("<1k", override.aes=list(fill="grey50")))+
+    geom_point(data=sacflood, aes(x=Datetime, y=13.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
+    geom_point(data=sacflood, aes(x=Datetime, y=0.5), size=4, shape=15, color='steelblue1', inherit.aes = F))
 
 # Saving plots
 png("Output/Figures/YBLTE_Point_wq_%02d.png",
@@ -336,13 +355,17 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
 #                                           "CCY" = RColorBrewer::brewer.pal(8, "Set1")[7],
 #                                           "YFF" = "#999999"))
 
+# YBT uses FW1 wqp, YFF uses STDD wqp --> clarify? or denote on plot?
+
 # Specific conductivity
 (contspcplot <- ggplot(cdec_wide[is.na(cdec_wide$ec) == F,], aes(x = Datetime, y = ec, color = Site_no)) + 
   geom_line(alpha = .8) + #geom_line(stat = "smooth", method = "loess", span = .1, linewidth = 1) +
   theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     labs(y = "SpC (US/cm)", x = NULL, color = "Site") +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm), color = "black", size = 3) +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm, color = Site)))
+    # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm), color = "black", size = 3) +
+    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm, color = Site)) +
+    geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = SPC_uscm, color = "YBT")) +
+    geom_point(data = wqp[wqp$Site == "STTD", ], aes(x = Date, y = SPC_uscm, color = "YFF")))
 
 # ggplot(cdec_wide[is.na(cdec_wide$spc) == F,], aes(x = Datetime, y = spc, color = Site_no)) + 
 #   geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .2, linewidth = 1) + 
@@ -354,8 +377,10 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = 1) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     labs(y = "DO (mg/L)", x = NULL, color = "Site") +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = DO_mgl), color = "black", size = 3) +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = DO_mgl, color = Site)))
+    # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = DO_mgl), color = "black", size = 3) +
+    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = DO_mgl, color = Site)) +
+    geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = DO_mgl, color = "YBT")) +
+    geom_point(data = wqp[wqp$Site == "STTD", ], aes(x = Date, y = DO_mgl, color = "YFF")))
 
 # Temperature
 (conttempplot <- ggplot(cdec_wide[is.na(cdec_wide$wtemp_c) == F & cdec_wide$wtemp_c < 50 & 
@@ -363,40 +388,50 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     labs(y = "Temperature (C)", x = NULL, color = "Site") +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Temp), color = "black", size = 3) +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Temp, color = Site)))
+    # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Temp), color = "black", size = 3) +
+    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Temp, color = Site)) +
+    geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = Temp, color = "YBT")) +
+    geom_point(data = wqp[wqp$Site == "STTD", ], aes(x = Date, y = Temp, color = "YFF")))
 
 # Chlorophyll-a
 (contchlplot <- ggplot(cdec_wide[is.na(cdec_wide$chla) == F & cdec_wide$chla < 60,], aes(x = Datetime, y = chla, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     labs(y = "Chl-a (ug/L)", x = NULL, color = "Site") +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = CHL_ugl), color = "black", size = 3) +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = CHL_ugl, color = Site)))
+    # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = CHL_ugl), color = "black", size = 3) +
+    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = CHL_ugl, color = Site)) +
+    geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = CHL_ugl, color = "YBT")) +
+    geom_point(data = wqp[wqp$Site == "STTD", ], aes(x = Date, y = CHL_ugl, color = "YFF")))
 
 # pH
 (contphplot <- ggplot(cdec_wide[is.na(cdec_wide$ph) == F & cdec_wide$ph < 60,], aes(x = Datetime, y = ph, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     labs(y = "pH", x = NULL, color = "Site") +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = pH), color = "black", size = 3) +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = pH, color = Site)))
+    # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = pH), color = "black", size = 3) +
+    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = pH, color = Site)) +
+    geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = pH, color = "YBT")) +
+    geom_point(data = wqp[wqp$Site == "STTD", ], aes(x = Date, y = pH, color = "YFF")))
 
 # Turbidity
 (contturbplot <- ggplot(cdec_wide[is.na(cdec_wide$turb_fnu) == F & cdec_wide$turb_fnu < 80,], aes(x = Datetime, y = turb_fnu, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     labs(y = "Turb (FNU)", x = NULL, color = "Site") +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu), color = "black", size = 3) +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu, color = Site)))
+    # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu), color = "black", size = 3) +
+    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu, color = Site)) +
+    geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = Turb_fnu, color = "YBT")) +
+    geom_point(data = wqp[wqp$Site == "STTD", ], aes(x = Date, y = Turb_fnu, color = "YFF")))
  
 # Fluorescent dissolved organic matter (FDOM)
 (contfdomplot <- ggplot(cdec_wide[is.na(cdec_wide$fdom) == F & cdec_wide$fdom < 120,], aes(x = Datetime, y = fdom, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
     labs(y = "FDOM (QSU)", x = NULL, color = "Site") +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu), color = "black", size = 3) +
-    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu, color = Site)))
+    # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu), color = "black", size = 3) +
+    geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = fdom_qsu, color = Site)) +
+    geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = fdom_qsu, color = "YBT")) +
+    geom_point(data = wqp[wqp$Site == "STTD", ], aes(x = Date, y = fdom_qsu, color = "YFF")))
 
 ### Flow ----
 (contflowplot <- ggplot(cdec_wide[cdec_wide$Site_no %in% c("LIS", "RCS", "YBY", "PTC") & is.na(cdec_wide$discharge_cfs) == F,], 
@@ -498,12 +533,9 @@ stage_wide$above <- ifelse(stage_wide$above, "Flowing", "Below")
 ### Save outputs ----
 # All gauge plots
 png("Output/Figures/YBLTE_Cont_wq_%02d.png",
-    height = 10, width = 6, units = "in", res = 1000, family = "serif")
+    height = 8, width = 6, units = "in", res = 1000, family = "serif")
 
-cowplot::plot_grid(
-                   contflowplot2 + theme(axis.text.x = element_blank()),
-                   contpercflowplot + theme(axis.text.x = element_blank()),
-                   conttempplot + theme(axis.text.x = element_blank()),
+cowplot::plot_grid(conttempplot + theme(axis.text.x = element_blank()),
                    contdoplot + theme(axis.text.x = element_blank()),
                    contspcplot + theme(axis.text.x = element_blank()),
                    contfdomplot + theme(axis.text.x = element_blank()),
@@ -653,6 +685,9 @@ pc_score$week <- pc_in$week
 pc_load <- as.data.frame(pc$rotation[, 1:2])
 scaling_factor <- 1.2 * max(abs(pc_score[, 1:2]))
 pc_load_scaled <- pc_load*scaling_factor
+
+# Rename variables
+row.names(pc_load_scaled) <- c('DO', 'SPC', 'pH', 'Turbidity', 'Chlorophyll', 'FDOM')
 
 # Calculate convex hull by site
 conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subset(select=-c(week))

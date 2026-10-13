@@ -168,8 +168,9 @@ WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 
 if(saveoutput == T){tiff("Output/Maps/YBLTE_Sites%02daTEST.tif",
-                                 height = 8, width = 5, units = "in", res = 1000, family = "serif", compression = "lzw")}
+                                 height = 8, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")}
 
+# Excludes sites not looked at in analyses (only sampled few times or just fish)
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'Yolo Bypass'), color = NA) +
   
@@ -203,7 +204,7 @@ ggplot() +
   geom_sf(data = proj_pts %>% filter(Sampletype=="outsource"), 
           aes(shape = " "), color = "darkred", size = 5, linewidth = 3) +
   scale_shape_manual(
-    name   = "Outsourced\nData",
+    name   = "Outsourced Data",
     values = c(
       " " = 8
     ),
@@ -217,7 +218,7 @@ ggplot() +
     #   )
     # )
   ) +  ggnewscale::new_scale('shape') +
-  geom_sf(data = proj_pts %>% filter(Sampletype!="test"), 
+  geom_sf(data = proj_pts %>% filter(Sampletype %in% c("main", "outsource")), 
           aes(shape = Sitetype, fill = Sitetype), size = 4, linewidth = 2) +
   scale_shape_manual(values = 21:23) +
   scale_fill_manual(values = c(alpha('steelblue', 0.6), alpha('gold', 0.6), alpha('purple', 0.6))) +
@@ -237,7 +238,7 @@ ggplot() +
   geom_text_repel(aes(x = -121.63, y = 38.825, label = "Feather\nRiver"), 
                   data = NULL, color = "#1A3057", size = 3, fontface = "bold",
                   bg.color = "white", bg.r = 0.1, force = 0, hjust = "left") +
-  geom_text_repel(data = proj_pts %>% filter(Sampletype!="test"), 
+  geom_text_repel(data = proj_pts %>% filter(Sampletype %in% c("main", "outsource")), 
                   aes(geometry = geometry, label = Site_id), 
                   stat = "sf_coordinates", size = 4, bg.color = alpha("white", 0.6),
                   color = "black", bg.r = 0.1, fontface = "bold") +
@@ -251,7 +252,7 @@ ggplot() +
        x = NULL, y = NULL, shape = "Site Type", fill = "Site Type", label = "") +
   theme(
     # Move legend inside top-left
-    legend.position   = c(0.25, 0.50),
+    legend.position   = c(0.30, 0.50),
     legend.justification = c(1, 1),
     
     # Styling
