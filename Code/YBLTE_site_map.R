@@ -108,6 +108,7 @@ if(API){
 }else{
   ## Short-cut to pre saved data
   load(file = "data/spatial/Yolo_map_data.Rdata")
+  audobon_wet <- st_read("Data/spatial/Audobon_wetlands_simple.geojson")
 }
 
 ## Subset bypasses to only Yolo
@@ -167,25 +168,25 @@ leaflet(rest_polys) %>%
 WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
 ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 
-if(saveoutput == T){tiff("Output/Maps/YBLTE_Sites%02daTEST.tif",
+if(saveoutput == T){tiff("Output/Maps/YBLTE_Sites%02da.tif",
                                  height = 8, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")}
 
 # Excludes sites not looked at in analyses (only sampled few times or just fish)
 ggplot() + 
   geom_sf(data = yolo_bypass, aes(fill = 'Yolo Bypass'), color = NA) +
   
-  geom_sf(data = nwi, aes(fill = "NWI Wetlands"), color = NA, alpha = 0.6) +
+  geom_sf(data = audobon_wet, aes(fill = "Wetlands"), color = NA, alpha = 0.6) +
   
   geom_sf(data = cdl_sf, aes(fill = "CDL 2024\nRice Field"), color = NA, alpha = 0.9) +
   scale_fill_manual(
     name   = "Landcover",
     values = c(
       "Yolo Bypass" = alpha('#33599C', 0.5),
-      "NWI Wetlands" = "forestgreen",
+      "Wetlands" = "forestgreen",
       "CDL 2024\nRice Field"   = "wheat2"
     ),
-    breaks = c("Yolo Bypass", "NWI Wetlands", "CDL 2024\nRice Field"),
-    labels = c("Yolo Bypass", "NWI Wetlands", "CDL 2024\nRice Field"),
+    breaks = c("Yolo Bypass", "Wetlands", "CDL 2024\nRice Field"),
+    labels = c("Yolo Bypass", "Wetlands", "CDL 2024\nRice Field"),
     guide = guide_legend(
       override.aes = list(
         shape = 22,      # square patch
