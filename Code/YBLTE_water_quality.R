@@ -100,8 +100,8 @@ sensor_codes <- data.frame(sensor = c("chla", "ec", "discharge_cfs", "fdom",
                                           25, 61, 62, 221, 1))
 
 # Focus on water year and sampling season
-startdate <- "2025-10-1"
-enddate <- "2026-05-10"
+startdate <- "2025-10-01"
+enddate <- "2026-05-01"
 
 cdec <- data.frame()
 for(station in cdec_stations){
@@ -191,7 +191,7 @@ sacflood <- cdec_wide %>% filter((Site_no=="FRE")&(stage_ft>32))
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (doplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = DO_mgl)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mgl)") +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = "DO (mg/L)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b")+
     geom_point(data=sacflood, aes(x=Datetime, y=14.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
@@ -206,7 +206,7 @@ sacflood <- cdec_wide %>% filter((Site_no=="FRE")&(stage_ft>32))
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (spcplotdate <- ggplot(wqp %>% drop_na(Sitefac), aes(x = Date, y = Sitefac, fill = SPC_uscm)) + 
-    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = expression("SPC ("*mu*"scm)")) +
+    geom_tile(width = 8) + labs(x = NULL, y=NULL, fill = expression("SPC ("*mu*"S/cm)")) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
     scale_fill_gradientn(colors = viridis::plasma(3), limits = c(100, 1000),
@@ -253,7 +253,7 @@ sacflood <- cdec_wide %>% filter((Site_no=="FRE")&(stage_ft>32))
     scale_x_continuous(limits = c(0, max(wqp$week)+1)) +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev))
 (fdomplotdate <- ggplot(wqp %>% drop_na(c(Sitefac, fdom_qsu)), aes(x = Date, y = Sitefac, fill = fdom_qsu)) + 
-    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "FDOM (qsu)") +
+    geom_tile(width = 7) + labs(x = NULL, y=NULL, fill = "FDOM (QSU)") +
     theme_bw() + scale_fill_viridis_c(option = "C") + scale_y_discrete(limits = rev) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b", limits = (as.Date(c("2025-11-01", "2026-05-01"))))+
     geom_point(data=sacflood, aes(x=Datetime, y=14.5), size=4, shape=15, color='steelblue1', inherit.aes = F)+
@@ -278,7 +278,7 @@ sacflood <- cdec_wide %>% filter((Site_no=="FRE")&(stage_ft>32))
 # Large cladocera (from zoop script)
 load("Data/YBLTE_zoop_clean.RData")
 
-(lcladplot <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Site, fill = totezoop, color = "")) +
+(lcladplot <- ggplot(zoop_weekly_group %>% filter(group=="Large cladocera"), aes(x = Date, y = Sitefac, fill = totezoop, color = "")) +
     geom_tile(width = 7) + scale_fill_gradientn(trans = "log10", colors = viridis::plasma(3), limits = c(1000, NA),
                                                 breaks = c(1e3, 1e4, 1e5), labels = c("1k", "10k", "100k")) + 
     labs(x = NULL, y=NULL, fill = bquote("Large\nCladocera "(m^-3))) +
@@ -361,7 +361,7 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
 (contspcplot <- ggplot(cdec_wide[is.na(cdec_wide$ec) == F,], aes(x = Datetime, y = ec, color = Site_no)) + 
   geom_line(alpha = .8) + #geom_line(stat = "smooth", method = "loess", span = .1, linewidth = 1) +
   theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
-    labs(y = "SpC (US/cm)", x = NULL, color = "Site") +
+    labs(y = "SPC (μS/cm)", x = NULL, color = "Site") +
     # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = SPC_uscm, color = Site)) +
     geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = SPC_uscm, color = "YBT")) +
@@ -387,7 +387,7 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
     cdec_wide$Site_no != "RCS", ], aes(x = Datetime, y = wtemp_c, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
-    labs(y = "Temperature (C)", x = NULL, color = "Site") +
+    labs(y = "Temperature (°C)", x = NULL, color = "Site") +
     # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Temp), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Temp, color = Site)) +
     geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = Temp, color = "YBT")) +
@@ -397,7 +397,7 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
 (contchlplot <- ggplot(cdec_wide[is.na(cdec_wide$chla) == F & cdec_wide$chla < 60,], aes(x = Datetime, y = chla, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
-    labs(y = "Chl-a (ug/L)", x = NULL, color = "Site") +
+    labs(y = "Chl-a (μg/L)", x = NULL, color = "Site") +
     # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = CHL_ugl), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = CHL_ugl, color = Site)) +
     geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = CHL_ugl, color = "YBT")) +
@@ -417,7 +417,7 @@ corplot <- (ggplot(cor_df, aes(x = Var1, y = Var2, fill = correlation)) +
 (contturbplot <- ggplot(cdec_wide[is.na(cdec_wide$turb_fnu) == F & cdec_wide$turb_fnu < 80,], aes(x = Datetime, y = turb_fnu, color = Site_no)) + 
     geom_line(alpha = .2) + geom_line(stat = "smooth", method = "loess", span = .1, linewidth = .8) + 
     theme_bw() +  animCol + scale_x_datetime(date_breaks = "1 month", date_labels = "%b-1") +
-    labs(y = "Turb (FNU)", x = NULL, color = "Site") +
+    labs(y = "Turbidity (FNU)", x = NULL, color = "Site") +
     # geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu), color = "black", size = 3) +
     geom_point(data = wqp[wqp$Site == "LIS", ], aes(x = Date, y = Turb_fnu, color = Site)) +
     geom_point(data = wqp[wqp$Site == "FW1", ], aes(x = Date, y = Turb_fnu, color = "YBT")) +
@@ -542,7 +542,7 @@ cowplot::plot_grid(conttempplot + theme(axis.text.x = element_blank()),
                    contturbplot  + theme(axis.text.x = element_blank()),
                    contchlplot,
                    align  = "v",
-                   nrow = 8)
+                   ncol = 1)
 
 dev.off()
 
@@ -657,16 +657,28 @@ cowplot::plot_grid(
 
 # Filter var of interest; temp too variable (discrete data),
   # sal and TDS like SPC, pc like chlorop, zoop not at every site
-pc_in <- data.frame(wqp[wqp$Date > as.Date("2025-11-15")& wqp$Date < as.Date("2026-04-01"),
-                        c("RowID","Site","Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
+pc_in <- data.frame(wqp[#wqp$Date > as.Date("2025-11-15")& wqp$Date < as.Date("2026-04-01")
+<<<<<<< HEAD
+                        ,c("RowID","Sitefac", "Date", "SPC_uscm", "pH",           
+=======
+                        ,c("RowID","Sitefac", "Date", "DO_mgl", "SPC_uscm", "pH",           
+>>>>>>> ecbe14faa2bdb19cf2a58f63455577c4cf52db50
                           "Turb_fnu", "CHL_ugl", "fdom_qsu", "week")])
 
 rownames(pc_in) <- paste(pc_in$Site, pc_in$RowID)
 pc_in <- drop_na(pc_in)
-pc_in <- pc_in[pc_in$RowID != 257,] ## dropping KLWW on day when flow was reversing
+
+# Dropping tributary points with no/low/reverse flow
+<<<<<<< HEAD
+pc_in <- pc_in %>% filter(!(((Sitefac=="KLWW")&(Date %in% as.Date(c("2026-03-24", "2026-04-07"))))|
+                            ((Sitefac=="CCSYB")&(Date %in% as.Date(c("2026-04-21", "2026-04-07"))))))
+=======
+pc_in <- pc_in %>% filter(!(((Site=="KLWW")&(Date %in% as.Date(c("2026-03-24", "2026-04-07"))))|
+                            ((Site=="CCSYB")&(Date %in% as.Date(c("2026-04-21", "2026-04-07"))))))
+>>>>>>> ecbe14faa2bdb19cf2a58f63455577c4cf52db50
 
 ### PCA calculations ----
-pc <- prcomp(subset(pc_in, select=-c(RowID, Site,Sitefac, Date, week)), scale=T)
+pc <- prcomp(subset(pc_in, select=-c(RowID, Sitefac, Date, week)), scale=T)
 pc$rotation <- -1*pc$rotation
 pc$x <- -1*pc$x
 
@@ -687,7 +699,26 @@ scaling_factor <- 1.2 * max(abs(pc_score[, 1:2]))
 pc_load_scaled <- pc_load*scaling_factor
 
 # Rename variables
-row.names(pc_load_scaled) <- c('DO', 'SPC', 'pH', 'Turbidity', 'Chlorophyll', 'FDOM')
+<<<<<<< HEAD
+row.names(pc_load_scaled) <- c('SPC', 'pH', 'Turbidity', 'Chl-a', 'FDOM')
+=======
+row.names(pc_load_scaled) <- c('DO', 'SPC', 'pH', 'Turbidity', 'Chl-a', 'FDOM')
+>>>>>>> ecbe14faa2bdb19cf2a58f63455577c4cf52db50
+
+trib_fills <- scale_fill_manual(values = c("FWBN" = "#CC4678FF",
+                                           "FW1" = NA, 
+                                           "KLWW" = "#0D0887FF",
+                                           "KNG3" = NA, 
+                                           "CCSYB" = "#CF7500",
+                                           "CNW" = NA, 
+                                           "RD22" = NA, 
+                                           "YBLR4" = NA, 
+                                           "SB4" = NA, 
+                                           "AL0" = NA, 
+                                           "LIS" = NA,
+                                           "STTD" = NA,
+                                           "TEW" = NA,
+                                           "TER" = NA))
 
 # Calculate convex hull by site
 conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subset(select=-c(week))
@@ -723,8 +754,7 @@ conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subse
     # geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
     #              aes(x=PC1, y=PC2, fill=Sitefac, color=Sitefac),
     #              alpha=0.2)+
-    stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
-                   subset(select = -c(week)), geom = "polygon",
+    stat_ellipse(data = pc_score, geom = "polygon",
                  aes(x = PC1, y = PC2, fill = Sitefac), alpha = 0.2) +
     geom_segment(data=pc_load_scaled, aes(x=0, y=0, xend=PC1, yend=PC2),
                  alpha=0.5, color="black", linewidth=0.8)+
@@ -737,7 +767,7 @@ conv_hull <- pc_score %>% group_by(Sitefac) %>% slice(chull(PC1, PC2)) %>% subse
          x=paste0("PC1 (", pc1_v, "% Variance)"),
          y=paste0("PC2 (", pc2_v, "% Variance)"),
          color="Site", fill="Site", shape="Site")+
-    theme_bw()+ animCol+ animFill + 
+    theme_bw()+ animCol+ trib_fills +
     scale_shape_manual(values = c(1:14)))
 
 # Color code each point to be dominating tributary, highlights SB4, STTD, TEW
@@ -762,8 +792,7 @@ pc_cdec$Site_no <- factor(pc_cdec$Site_no, )
     # geom_polygon(data=conv_hull[conv_hull$Sitefac %in% c("FWBN", "KLWW", "CCSYB"),], 
     #             aes(x=PC1, y=PC2, fill=Sitefac), color=NA,
     #             alpha=0.2)+
-    stat_ellipse(data = pc_score %>% filter(Sitefac %in% c("FWBN", "KLWW", "CCSYB")) %>%
-                   subset(select = -c(week)), geom = "polygon",
+    stat_ellipse(data = pc_score, geom = "polygon",
                  aes(x = PC1, y = PC2, fill = Sitefac), alpha=0.2) +
     geom_point(data=pc_cdec, 
                aes(x=PC1, y=PC2, color=Site_no, shape=Sitefac))+
@@ -786,8 +815,8 @@ pc_cdec$Site_no <- factor(pc_cdec$Site_no, )
     labs(title = "Point Water Quality PCA",
          x=paste0("PC1 (", pc1_v, "% Variance)"),
          y=paste0("PC2 (", pc2_v, "% Variance)"),
-         color="Highest Flow", fill="Source", shape="Site")+
-    theme_bw()+ animCol + animFill + guides(size="none")+
+         color="Highest Flow", fill="Site", shape="Site")+
+    theme_bw()+ animCol + trib_fills + guides(size="none")+
     scale_shape_manual(values = c(1:14)))
 
 # Save plot

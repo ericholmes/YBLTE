@@ -75,6 +75,24 @@ if(API){
   cdl_sf <- st_as_sf(cdl_sf, as_points = F)
   cdl_sf <- cdl_sf %>% rename(crop = CDL_2024_clip_20260416112512_974840496)
   
+  # Read new ag data, combine over 4 years and filter for rice; unable to upload data to GitHub
+  # cropmap4 <- st_read("Data/spatial/Crop_Mapping/i15_Crop_Mapping_2024_Provisional.shp")
+  # cropmap3 <- st_read("Data/spatial/Crop_Mapping/i15_Crop_Mapping_Final_2023.shp")
+  # cropmap2 <- st_read("Data/spatial/Crop_Mapping/i15_crop_mapping_2022.shp")
+  # cropmap1 <- st_read("Data/spatial/Crop_Mapping/i15_Crop_Mapping_2021.shp")
+  # sf_use_s2(F)
+  # cropmap_4 <- st_crop(st_transform(cropmap4, crs = 4326), sac_bbox)
+  # cropmap_3 <- st_crop(st_transform(cropmap3, crs = 4326), sac_bbox)
+  # cropmap_2 <- st_crop(st_transform(cropmap2, crs = 4326), sac_bbox)
+  # cropmap_1 <- st_crop(st_transform(cropmap1, crs = 4326), sac_bbox)
+  # 
+  # crop4 <- cropmap_4 %>% filter(SYMB_CLASS=='R')%>% subset(select=c(geometry)) 
+  # crop3 <- cropmap_3 %>% filter(SYMB_CLASS=='R')%>% subset(select=c(geometry)) 
+  # crop2 <- cropmap_2 %>% filter(SYMB_CLASS=='R')%>% subset(select=c(geometry)) 
+  # crop1 <- cropmap_1 %>% filter(SYMB_CLASS=='R')%>% subset(select=c(geometry)) 
+  # 
+  # crop <- st_union(bind_rows(crop4, crop3, crop2, crop1))
+  
   # Download NHDPlus flowlines within the bbox
   flowlines <- get_nhdplus(
     sac_poly,
@@ -103,12 +121,15 @@ if(API){
   roads_filtered <- st_intersection(roads, counties_clip_boundary)
   
   if(savecache == T){save(polygons, bypasses, rivers_major, roads_filtered, ywa_poly, cari, cdl_sf,
-       file = "data/spatial/Yolo_map_data.Rdata")}
+       file = "data/spatial/Yolo_map_data.Rdata"); #save(crop, file="Data/spatial/CropMap.RData")
+    }
 
 }else{
   ## Short-cut to pre saved data
   load(file = "data/spatial/Yolo_map_data.Rdata")
   audobon_wet <- st_read("Data/spatial/Audobon_wetlands_simple.geojson")
+  load(file = "Data/spatial/CropMap.RData")
+  ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 }
 
 ## Subset bypasses to only Yolo
@@ -166,7 +187,6 @@ leaflet(rest_polys) %>%
 
 ## Static map ---------------------------------------------------------------
 WW_Watershed_wgs84 <- st_transform(WW_Watershed, st_crs(yolo_bypass))
-ridgecut <- read_sf("Data/spatial/Ridgecut_ToeDrain.geojson")
 
 if(saveoutput == T){tiff("Output/Maps/YBLTE_Sites%02da.tif",
                                  height = 8, width = 6, units = "in", res = 1000, family = "serif", compression = "lzw")}
@@ -177,16 +197,16 @@ ggplot() +
   
   geom_sf(data = audobon_wet, aes(fill = "Wetlands"), color = NA, alpha = 0.6) +
   
-  geom_sf(data = cdl_sf, aes(fill = "CDL 2024\nRice Field"), color = NA, alpha = 0.9) +
+  geom_sf(data = crop, aes(fill = "Rice Field"), color = NA, alpha = 0.9) +
   scale_fill_manual(
     name   = "Landcover",
     values = c(
       "Yolo Bypass" = alpha('#33599C', 0.5),
       "Wetlands" = "forestgreen",
-      "CDL 2024\nRice Field"   = "wheat2"
+      "Rice Field"   = "wheat2"
     ),
-    breaks = c("Yolo Bypass", "Wetlands", "CDL 2024\nRice Field"),
-    labels = c("Yolo Bypass", "Wetlands", "CDL 2024\nRice Field"),
+    breaks = c("Yolo Bypass", "Wetlands", "Rice Field"),
+    labels = c("Yolo Bypass", "Wetlands", "Rice Field"),
     guide = guide_legend(
       override.aes = list(
         shape = 22,      # square patch
