@@ -85,3 +85,38 @@ downloadCDEC <- function(site_no, parameterCd, startDT, endDT){
   
   return(temp[,c("Site_no", "Datetime", "parameterCd", "Param_val")])
 }
+
+
+ImportContinuousLong <- function(stationNumber){
+  
+  searchURL <- paste0(
+    "https://data.cnra.ca.gov/api/3/action/datastore_search?",
+    "resource_id=cdb5dd35-c344-4969-8ab2-d0e2d6c00821",
+    "&q=", stationNumber
+  )
+  
+  links <- searchURL %>%
+    jsonlite::read_json() %>%
+    purrr::pluck("result", "records") %>%
+    tibble() %>%
+    unnest_wider(1) %>%
+    filter(
+      station_number == stationNumber,
+      output_interval == "RAW"
+    )
+  
+  bind_rows(
+    lapply(seq_len(nrow(links)), function(i) {
+      
+      read.csv(links$download_link[i], skip = 2) %>%
+        transmute(
+          datetime = as.POSIXct(
+            Date,
+            format = "%m/%d/%Y %H:%M:%S"
+          ),
+          parameter = links$parameter[i],
+          value = Point
+        )
+    })
+  )
+}
