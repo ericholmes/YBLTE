@@ -1,0 +1,458 @@
+---
+title: "YBFMP Conditions Dashboard"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+  
+```{r setup, include=FALSE}
+
+library(flexdashboard)
+library(tidyverse)
+library(lubridate)
+library(leaflet)
+library(DT)
+library(htmltools)
+library(plotly)
+
+options(scipen = 999)
+
+
+# CACHE SETTINGS
+
+
+cache_file <- "ybfmp_dashboard_cache.Rdata"
+
+use_cache <- F
+
+cache_age_hours <- 1
+
+# STATIONS
+
+hydro_stations <- c(
+  "FRE",
+  "FWB",
+  "RCS",
+  "KNL",
+  "CCY",
+  "PTC",
+  "LIS",
+  "I80",
+  "YBT"
+)
+
+flow_stations <- c(
+  "FRE",
+  "RCS",
+  "KNL",
+  "CCY",
+  "PTC",
+  "YBY"
+)
+
+wq_stations <- c(
+  "YBT",
+  "I80",
+  "LIS"
+)
+
+# SENSOR NUMBERS
+
+S_STAGE <- 1
+S_FLOW  <- 20
+S_TEMP  <- 25
+S_CHL   <- 28
+S_DO    <- 61
+S_COND  <- 100
+S_FDOM  <- 266
+S_FCST  <- 169
+
+hydro_sensors <- c(
+  S_STAGE,
+  S_FLOW,
+  S_FCST
+)
+
+# THRESHOLDS
+
+FRE_OVERTOP <- 32
+
+BIG_NOTCH_OPEN <- 15
+BIG_NOTCH_FLOW <- 18
+
+LEBLS_THRESHOLD <- 9
+
+# CDEC DOWNLOAD FUNCTION ----
+
+get_cdec <- function(
+    station,
+    sensor,
+    start_date = Sys.Date() - 30,
+    end_date = Sys.Date(),
+    dur_codes = c("H","E","D")
+){
+  
+  if(sensor %in% hydro_sensors){
+    dur_codes <- c("H","E","D")
+  } else {
+    dur_codes <- c("E","H","D")
+  }
+  
+  for(dur in dur_codes){
+    
+    url <- paste0(
+      "https://cdec.water.ca.gov/dynamicapp/req/CSVDataServlet?",
+      "Stations=", station,
+      "&SensorNums=", sensor,
+      "&dur_code=", dur,
+      "&Start=", start_date,
+      "&End=", end_date
+    )
+    
+    out <- tryCatch(
+      read.csv(url, stringsAsFactors = FALSE),
+      error = function(e) NULL
+    )
+    
+    if(!is.null(out) && nrow(out) > 0){
+      
+      names(out) <- make.names(names(out))
+      
+      time_col <- names(out)[grepl("DATE", names(out), ignore.case = TRUE)][1]
+      
+      value_col <- names(out)[grepl("VALUE", names(out), ignore.case = TRUE)][1]
+      
+      return(
+        tibble(station = station,
+          sensor = sensor,
+          duration = dur,
+          datetime = as.POSIXct(out[[time_col]],
+            format = "%Y%m%d %H%M", tz = "America/Los_Angeles"),
+          value = suppressWarnings(as.numeric(out[[value_col]])),
+          status = "OK")
+      )
+    }
+  }
+  
+  tibble(station = station,
+         sensor = sensor,
+         duration = NA_character_,
+         datetime = as.POSIXct(NA, origin = "1970-01-01", tz = "America/Los_Angeles"),
+         value = NA_real_, status = "FAILED")
+  
+}
+
+
+# DOWNLOAD DATA OR LOAD CACHE ----
+
+
+if(
+  use_cache &&
+  file.exists(cache_file) &&
+  difftime(Sys.time(), file.info(cache_file)$mtime, units = "hours") < cache_age_hours
+){
+  load(cache_file)
+  
+} else {
+  
+  stage_dat <- purrr::map_df(
+    hydro_stations,
+    ~get_cdec(
+      station = .x,
+      sensor = S_STAGE,
+      start_date = Sys.Date()-30,
+      end_date = Sys.Date()
+    )
+  )
+  
+  flow_dat <- purrr::map_df(
+    flow_stations,
+    ~get_cdec(
+      station = .x,
+      sensor = S_FLOW,
+      start_date = Sys.Date()-30,
+      end_date = Sys.Date()
+    )
+  )
+  
+  fcst_dat <- purrr::map_df(
+    hydro_stations,
+    ~get_cdec(
+      station = .x,
+      sensor = S_FCST,
+      start_date = Sys.Date(),
+      end_date = Sys.Date()+10
+    )
+  )
+  
+  do_dat <- purrr::map_df(
+    wq_stations,
+    ~get_cdec(
+      station = .x,
+      sensor = S_DO
+    )
+  )
+  
+  temp_dat <- purrr::map_df(
+    wq_stations,
+    ~get_cdec(
+      station = .x,
+      sensor = S_TEMP
+    )
+  )
+  
+  
+cond_dat <- purrr::map_df(
+  wq_stations,
+  ~get_cdec(
+    station = .x,
+    sensor = S_COND
+  )
+)
+
+fdom_dat <- purrr::map_df(
+  wq_stations,
+  ~get_cdec(
+    station = .x,
+    sensor = S_FDOM
+  )
+)
+
+  
+  save(stage_dat, flow_dat, fcst_dat, do_dat, temp_dat, cond_dat, fdom_dat, file = cache_file)
+  
+}
+
+
+# LATEST CONDITIONS
+
+
+latest_stage <- stage_dat %>%
+  filter(!is.na(value)) %>%
+  group_by(station) %>%
+  slice_max(datetime, n = 1) %>%
+  ungroup()
+
+
+# ALERTS
+
+
+i80_stage <- latest_stage %>%
+  filter(station == "I80") %>%
+  pull(value)
+
+lebls_alert <- case_when(
+  length(i80_stage)==0 ~ "NO DATA",
+  is.na(i80_stage) ~ "NO DATA",
+  i80_stage >= 9 ~ "LEBLS INUNDATED",
+  TRUE ~ "LEBLS DRY"
+)
+
+fwb_stage <- latest_stage %>%
+  filter(station == "FWB") %>%
+  pull(value)
+
+big_notch_alert <- case_when(
+  length(fwb_stage)==0 ~ "NO DATA",
+  is.na(fwb_stage) ~ "NO DATA",
+  fwb_stage < 15 ~ "NOT FLOWING",
+  fwb_stage < 18 ~ "FLOW PATH AVAILABLE",
+  TRUE ~ "FLOWING THROUGH BIG NOTCH"
+)
+
+
+# MAP COORDINATES
+
+
+stations <- tribble(~station, ~label, ~lat, ~lon,
+  "FRE","Fremont Weir", 38.759250, -121.667293,
+  "FWB","Big Notch", 38.764906, -121.636439,
+  "RCS","Ridge Cut Slough", 38.793302, -121.725666,
+  "KNL","Knights Landing", 38.803300, -121.716413,
+  "CCY","Cache Creek",  38.726596, -121.807117,
+  "PTC","Putah Creek", 38.492433, -122.006321,
+  "LIS","Lisbon Weir", 38.474753, -121.588603,
+  "YBT","Tule Pond",	38.75058, -121.63525,
+  "I80","Toe Drain at I80", 38.578201, -121.583643,
+  "YBY","Tule Canal at RD22",	 38.677371, -121.644188
+)
+
+map_dat <- latest_stage %>%
+  right_join(
+    stations,
+    by = "station"
+  )
+
+```
+
+Hydrologic Conditions
+=====================================
+  
+Column {data-width=40}
+-------------------------------------
+  
+### Monitoring Stations
+  
+```{r}
+
+leaflet(map_dat) |>
+  
+  addProviderTiles("Esri.WorldImagery") |>
+  
+  addCircleMarkers(lng = ~lon,lat = ~lat,
+                   radius = 8,
+                   fillOpacity = 0.9,
+                   
+                   popup = ~paste0(
+                     "<b>",
+                     label,
+                     "</b><br>",
+                     "Stage: ",
+                     round(value,1),
+                     " ft"
+                   ))
+
+```
+
+Column {data-width=60}
+-------------------------------------
+### Flow Conditions
+
+```{r fig.height=4}
+
+##Plot setup
+stage_plot <- stage_dat %>%
+  filter(station %in% c("FRE", "YBT", "I80", "KNL", "RCS"))
+
+fre_fcst <- fcst_dat %>%
+  filter(station == "FRE")
+
+
+forecast_label <- data.frame(
+  datetime = min(fre_fcst$datetime) + lubridate::hours(48),
+  stage = 35,
+  label = "Forecast"
+)
+plot_labels <- data.frame(labels = c("forecast", "Weir overtops", "Notch operational", "LEBLS wet"),
+                          datetime = c(min(fre_fcst$datetime) + lubridate::hours(48),
+                                       min(stage_plot$datetime) + lubridate::hours(48),
+                                       min(stage_plot$datetime) + lubridate::hours(48),
+                                       min(stage_plot$datetime) + lubridate::hours(48)),
+                          stage = c(35, 33, 16, 10))
+
+xlims <- range(c(stage_plot$datetime, fre_fcst$datetime), na.rm = TRUE)
+
+station_cols <- c(
+  FRE = "#1b9e77",  # Fremont Weir
+  RCS = "#d95f02",  # Ridge Cut
+  KNL = "#7570b3",  # Knights Landing
+  CCY = "#e7298a",  # Cache Creek
+  PTC = "#66a61e",  # Putah Creek
+  YBY = "#e6ab02",  # Tule Canal
+  YBT = "#a6761d",  # Tule Pond
+  I80 = "#666666"   # Toe Drain I80
+)
+
+plotly::ggplotly(ggplot(
+  flow_dat[flow_dat$station %in% c("FRE", "RCS", "CCY", "PTC", "YBY"),], 
+  aes(datetime, value, color = station)) +
+    geom_line(alpha = .7, linewidth = .8) +
+    theme_bw() +
+    scale_color_manual(values = station_cols) +
+    scale_x_datetime(limits = xlims) +
+    labs(x = NULL, y = "Flow", color = NULL))
+
+``` 
+### Stage Conditions
+  
+```{r fig.height=4}
+
+
+plotly::ggplotly(ggplot() + geom_rect(aes(xmin = min(fre_fcst$datetime), xmax = max(fre_fcst$datetime),
+                                          ymin = 3, ymax = 36), fill = "grey80", alpha = 0.4, inherit.aes = FALSE) +
+                   
+                   geom_text(data = plot_labels, aes(datetime, stage, label = labels),
+                             hjust = 0, vjust = 0,color = "grey40",fontface = "bold" )+
+                   geom_line(data = stage_plot, aes(datetime, value, color = station), linewidth = .8) +
+                   geom_line(data = fre_fcst, aes(datetime, value, color = station), linetype = 3, linewidth = .8) +
+                   geom_hline(yintercept = 32, linetype = 2, alpha = .5) +
+                   geom_hline(yintercept = 15, linetype = 2, alpha = .5) +
+                   geom_hline(yintercept = 9, linetype = 2, alpha = .5) +
+                   scale_color_manual(values = station_cols) +
+                   labs(x = NULL, y = "Stage (ft)", color = NULL) +
+                   scale_x_datetime(limits = xlims) +
+                   theme_bw())
+
+```
+
+
+Water Quality
+=====================================
+
+Column
+-------------------------------------
+
+### Dissolved Oxygen
+
+```{r}
+
+plotly::ggplotly(ggplot(
+  do_dat[is.na(do_dat$value) == F, ],
+  aes(datetime,value, color = station)) +
+    geom_line() +
+    geom_hline(yintercept = 6, color = "darkgreen",linetype = 2) +
+    geom_hline(yintercept = 4, color = "red", linetype = 2) +
+    theme_bw() +
+    labs(title = "Dissolved Oxygen", y = "DO (mg/L)", 
+         x = NULL,color = NULL))
+
+```
+
+### Specific Conductivity
+
+```{r}
+
+plotly::ggplotly(ggplot(
+  cond_dat[is.na(cond_dat$value) == F, ], 
+  aes(datetime, value, color = station)) +
+    geom_line() +
+    theme_bw() +
+    labs(title = "Specific Conductivity", y = "Specific Conductivity",
+         x = NULL, color = NULL
+    ))
+
+```
+
+Column
+-------------------------------------
+
+### Water Temperature
+
+```{r}
+temp_dat$temp_c <- round((temp_dat$value - 32) * 5 / 9, 1)
+temp_dat$temp_c <- ifelse(temp_dat$temp_c < 2, NA,temp_dat$temp_c)
+plotly::ggplotly(ggplot(
+  temp_dat[is.na(temp_dat$value) == F, ],
+  aes(datetime, temp_c, color = station)) +
+    geom_line() +
+    geom_hline(yintercept = 25, color = "red", linetype = 2) +
+    theme_bw() +
+    labs(title = "Water Temperature", y = "Temperature (°C)",
+         x = NULL,color = NULL))
+
+```
+
+### FDOM
+
+```{r}
+
+plotly::ggplotly(ggplot(
+  fdom_dat[is.na(fdom_dat$value) == F, ],
+  aes(datetime, value, color = station)) +
+    geom_line() +
+    theme_bw() +
+    labs(title = "FDOM", by = "FDOM", 
+         x = NULL, color = NULL))
+
+```
