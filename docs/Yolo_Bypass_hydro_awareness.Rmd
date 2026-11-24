@@ -24,7 +24,7 @@ options(scipen = 999)
 
 cache_file <- "ybfmp_dashboard_cache.Rdata"
 
-use_cache <- F
+use_cache <- T
 
 cache_age_hours <- 1
 
@@ -39,7 +39,8 @@ hydro_stations <- c(
   "PTC",
   "LIS",
   "I80",
-  "YBT"
+  "YBT",
+  "LIS"
 )
 
 flow_stations <- c(
@@ -323,41 +324,49 @@ Column {data-width=60}
 
 ##Plot setup
 stage_plot <- stage_dat %>%
-  filter(station %in% c("FRE", "YBT", "I80", "KNL", "RCS"))
+  filter(station %in% c("FRE", "YBT", "I80", "KNL", "RCS", "LIS"))
 
-fre_fcst <- fcst_dat %>%
-  filter(station == "FRE")
-
-
+fcst_dat_sub <- fcst_dat[fcst_dat$station %in% c("FRE", "LIS"),]
 forecast_label <- data.frame(
-  datetime = min(fre_fcst$datetime) + lubridate::hours(48),
+  datetime = min(fcst_dat_sub$datetime, na.rm = T) + lubridate::hours(48),
   stage = 35,
   label = "Forecast"
 )
-plot_labels <- data.frame(labels = c("forecast", "Weir overtops", "Notch operational", "LEBLS wet"),
-                          datetime = c(min(fre_fcst$datetime) + lubridate::hours(48),
+
+plot_labels <- data.frame(station = c(NA, "FRE", NA, "LIS"),
+                          labels = c("forecast", "Weir tops", "LEBLS wet", "LIS flood"),
+                          datetime = c(min(fcst_dat_sub$datetime, na.rm = T) + lubridate::hours(48),
                                        min(stage_plot$datetime) + lubridate::hours(48),
                                        min(stage_plot$datetime) + lubridate::hours(48),
                                        min(stage_plot$datetime) + lubridate::hours(48)),
-                          stage = c(35, 33, 16, 10))
+                          stage = c(35, 33, 10, 14))
 
-xlims <- range(c(stage_plot$datetime, fre_fcst$datetime), na.rm = TRUE)
+plot_labels$stationfac <- factor(plot_labels$station, levels = c("FRE", "LIS"),
+                                labels = c("Fremont Weir", "Lisbon"))
+
+xlims <- range(c(stage_plot$datetime, fcst_dat_sub$datetime), na.rm = TRUE)
 
 station_cols <- c(
-  FRE = "#1b9e77",  # Fremont Weir
-  RCS = "#d95f02",  # Ridge Cut
-  KNL = "#7570b3",  # Knights Landing
-  CCY = "#e7298a",  # Cache Creek
-  PTC = "#66a61e",  # Putah Creek
-  YBY = "#e6ab02",  # Tule Canal
-  YBT = "#a6761d",  # Tule Pond
-  I80 = "#666666"   # Toe Drain I80
+  "Fremont Weir" = "#1b9e77",  # Fremont Weir
+  "Ridgecut" = "#d95f02",  # Ridge Cut
+  "Sac R. at KNL" = "#7570b3",  # Knights Landing
+  "Cache Creek" = "#e7298a",  # Cache Creek
+  "Putah Creek" = "#66a61e",  # Putah Creek
+  "Tule C. at RD22" = "#e6ab02",  # Tule Canal
+  "Tule Pond" = "#a6761d",  # Tule Pond
+  "I80" = "#666666",  # Toe Drain I80
+  "Lisbon" = "brown"     # Toe Drain at Lisbon Weir
 )
+
+flow_dat$stationfac <- factor(flow_dat$station, 
+                                levels = c("KNL", "RCS", "FRE", "CCY", "I80", "YBY", "PTC"),
+                                labels = c("Sac R. at KNL", "Ridgecut", "Fremont Weir", "Cache Creek", 
+                                           "I80", "Tule C. at RD22", "Putah Creek"))
 
 plotly::ggplotly(ggplot(
   flow_dat[flow_dat$station %in% c("FRE", "RCS", "CCY", "PTC", "YBY"),], 
-  aes(datetime, value, color = station)) +
-    geom_line(alpha = .7, linewidth = .8) +
+  aes(datetime, value, color = stationfac)) +
+    geom_line(alpha = .7, linewidth = .8, alpha = .8) +
     theme_bw() +
     scale_color_manual(values = station_cols) +
     scale_x_datetime(limits = xlims) +
@@ -368,17 +377,26 @@ plotly::ggplotly(ggplot(
   
 ```{r fig.height=4}
 
+stage_plot$stationfac <- factor(stage_plot$station, 
+                                levels = c("KNL", "RCS", "FRE", "YBT", "I80", "LIS"),
+                                labels = c("Sac R. at KNL", "Ridgecut", "Fremont Weir", "Tule Pond", "I80", "Lisbon"))
 
-plotly::ggplotly(ggplot() + geom_rect(aes(xmin = min(fre_fcst$datetime), xmax = max(fre_fcst$datetime),
+fcst_dat_sub$stationfac <- factor(fcst_dat_sub$station, 
+                                levels = c("FRE", "LIS"),
+                                labels = c("Fremont Weir", "Lisbon"))
+
+plotly::ggplotly(ggplot() + geom_rect(aes(xmin = min(fcst_dat_sub$datetime, na.rm = T), xmax = max(fcst_dat_sub$datetime, na.rm = T),
                                           ymin = 3, ymax = 36), fill = "grey80", alpha = 0.4, inherit.aes = FALSE) +
                    
-                   geom_text(data = plot_labels, aes(datetime, stage, label = labels),
-                             hjust = 0, vjust = 0,color = "grey40",fontface = "bold" )+
-                   geom_line(data = stage_plot, aes(datetime, value, color = station), linewidth = .8) +
-                   geom_line(data = fre_fcst, aes(datetime, value, color = station), linetype = 3, linewidth = .8) +
-                   geom_hline(yintercept = 32, linetype = 2, alpha = .5) +
-                   geom_hline(yintercept = 15, linetype = 2, alpha = .5) +
-                   geom_hline(yintercept = 9, linetype = 2, alpha = .5) +
+                   geom_text(data = plot_labels, aes(datetime, stage, label = labels, color = stationfac),
+                             hjust = 0, vjust = 0,fontface = "bold", show.legend = F)+
+                   geom_line(data = stage_plot, aes(datetime, value, color = stationfac), 
+                             linewidth = .8, alpha = .8) +
+                   geom_line(data = fcst_dat_sub, aes(datetime, value, color = stationfac), 
+                             linetype = 3, linewidth = .8, alpha = .8) +
+                   geom_hline(yintercept = 32, linetype = 2, alpha = .5, linewidth = .5, color = "#1b9e77") +
+                   geom_hline(yintercept = 9, linetype = 2, alpha = .5, linewidth = .5) +
+                    geom_hline(yintercept = 13, linetype = 2, alpha = .5, linewidth = .5, color = "brown") +
                    scale_color_manual(values = station_cols) +
                    labs(x = NULL, y = "Stage (ft)", color = NULL) +
                    scale_x_datetime(limits = xlims) +
