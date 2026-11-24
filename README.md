@@ -3,3 +3,6 @@ The Yolo Bypass Lower Trophic Enhancement (YBLTE) Dashboard provides an interact
 
 👉 Open the dashboard:  
 https://ericholmes.github.io/YBLTE/YBLTE_dashboard.html
+
+👉 Current Yolo hydro conditions dashboard:  
+https://ericholmes.github.io/YBLTE/Yolo_Bypass_hydro_awareness.html
