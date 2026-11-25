@@ -388,7 +388,7 @@ fcst_dat_sub$stationfac <- factor(fcst_dat_sub$station,
 plotly::ggplotly(ggplot() + geom_rect(aes(xmin = min(fcst_dat_sub$datetime, na.rm = T), xmax = max(fcst_dat_sub$datetime, na.rm = T),
                                           ymin = 3, ymax = 36), fill = "grey80", alpha = 0.4, inherit.aes = FALSE) +
                    
-                   geom_text(data = plot_labels, aes(datetime, stage, label = labels, color = stationfac),
+                   geom_text(data = plot_labels, aes(datetime, stage, label = labels),
                              hjust = 0, vjust = 0,fontface = "bold", show.legend = F)+
                    geom_line(data = stage_plot, aes(datetime, value, color = stationfac), 
                              linewidth = .8, alpha = .8) +
